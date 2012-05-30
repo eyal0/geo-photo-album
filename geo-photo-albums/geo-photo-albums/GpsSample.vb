@@ -1,11 +1,11 @@
 ﻿Structure GpsSample
-    Private coordinate_ As Coordinate
-    Private datetime_ As DateTimeOffset
+    Public Coordinate As Coordinate
+    Public Datetime As DateTimeOffset
 
     Sub New(dt As DateTimeOffset, c As Coordinate)
         Dim Bangkok As TimeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById("Bangkok")
-        datetime_ = dt
-        coordinate_ = c
+        Datetime = dt
+        Coordinate = c
     End Sub
 
     Shared Function FromDict(d As IDictionary(Of String, String)) As GpsSample
