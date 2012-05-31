@@ -214,4 +214,8 @@ Structure Coordinate
         Dim ret As Coordinate = Coordinate.FromRadians(lat, lon)
         Return ret
     End Function
+
+    Public Overrides Function ToString() As String
+        Return LatitudeInDegrees.ToString + "," + LongitudeInDegrees.ToString
+    End Function
 End Structure

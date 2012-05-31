@@ -21,6 +21,25 @@
         Next
     End Function
 
+    Shared Iterator Function EnumerateLines(lines As IEnumerable(Of String)) As IEnumerable(Of Dictionary(Of String, String))
+        Dim lines1 As IEnumerator(Of String) = lines.GetEnumerator
+        lines1.MoveNext()
+        Dim line As String = lines1.Current
+        Dim new_fields As New List(Of String)(line.Split(","c))
+        Dim new_fields_set As New HashSet(Of String)(new_fields)
+        Debug.Assert(new_fields_set.Count = new_fields.Count)
+        Do While lines1.MoveNext
+            line = lines1.Current
+            Dim values As New List(Of String)(line.Split(","c))
+            Debug.Assert(values.Count = new_fields.Count)
+            Dim new_row As New Dictionary(Of String, String)
+            For i As Integer = 0 To new_fields.Count - 1
+                new_row.Add(new_fields(i), values(i))
+            Next
+            Yield new_row
+        Loop
+    End Function
+
     ''' <summary>
     ''' Write Csv class' contents to a file
     ''' </summary>

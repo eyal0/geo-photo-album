@@ -5,8 +5,8 @@ Created on May 19, 2012
 '''
 
 import datetime, geomath, os, itertools, collections
-from csv import Csv
-import heapq, operator
+import csv
+import heapq
 
 class GpsSample(datetime.datetime):
     '''
@@ -107,10 +107,10 @@ if(__name__ == '__main__'):
     all_csv = []
     for filename in os.listdir('C:\\Users\\Eyal\\Documents\\geo-photo-album\\gps tracks\\sorted_csv'):
         print(filename)
-        all_csv.append(Csv.read_file_rows(os.path.join('C:\\Users\\Eyal\\Documents\\geo-photo-album\\gps tracks\\sorted_csv',filename)))
+        all_csv.append(csv.Csv.read_file_rows(os.path.join('C:\\Users\\Eyal\\Documents\\geo-photo-album\\gps tracks\\sorted_csv',filename)))
     all_gpsPoints = heapq.merge(*map(lambda x: map(GpsSample.from_dict,x),all_csv))
     
-    zoom_level = 7
+    zoom_level = 0
     
     grouped_gps_points = map(lambda x: x[1], 
                              itertools.groupby(all_gpsPoints,

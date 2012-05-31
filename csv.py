@@ -1,4 +1,4 @@
-import sys, os, gps
+import sys, os, gps, datetime
 
 class Csv:
     """For reading, writing, and merging csv files"""
@@ -59,10 +59,12 @@ class Csv:
         f.close()
 
 if(__name__=='__main__'):
-    csv_source = r'C:\Users\Eyal\Documents\coding\geo-photo-album\csv'
-    csv_destination = r'C:\Users\Eyal\Documents\coding\geo-photo-album\sorted_csv'
+    start_time = datetime.datetime.now()
+    csv_source = r'C:\Users\Eyal\Documents\coding\geo-photo-album-bak\csv'
+    csv_destination = r'C:\Users\Eyal\Documents\coding\geo-photo-album-bak\sorted_csv'
     for filename in os.listdir(csv_source):
         print(filename)
         csv = Csv(os.path.join(csv_source, filename))
         csv.rows.sort(key=lambda x: gps.GpsSample.from_dict(x))
         csv.write_file(os.path.join(csv_destination, filename))
+    print(datetime.datetime.now() - start_time)

@@ -28,4 +28,12 @@
     Public Overrides Function GetHashCode() As Integer
         Return X.GetHashCode Xor Y.GetHashCode
     End Function
+
+    Public Shared Narrowing Operator CType(p As PointD) As Point
+        Return New Point(CInt(p.X), CInt(p.Y))
+    End Operator
+
+    Public Function Floor() As Point
+        Return New Point(CInt(Math.Truncate(X)), CInt(Math.Truncate(Y)))
+    End Function
 End Structure

@@ -16,18 +16,18 @@ Module EnumerableExtensions
     ''' <returns>Enumerable of sorted outputs</returns>
     ''' <remarks></remarks>
     <Extension()>
-    Iterator Function MergeSorted(Of Tvalue)(e As IEnumerable(Of IEnumerable(Of Tvalue))) As IEnumerable(Of Tvalue)
-        Dim inputs As New List(Of Tuple(Of Tvalue, IEnumerator(Of Tvalue)))
-        For Each i As IEnumerable(Of Tvalue) In e
-            Dim enumerator1 As IEnumerator(Of Tvalue) = i.GetEnumerator()
-            If enumerator1.MoveNext Then
-                Dim value As Tvalue = enumerator1.Current
-                inputs.Add(New Tuple(Of Tvalue, IEnumerator(Of Tvalue))(value,
-                                                                    enumerator1))
-            End If
-        Next
+    Iterator Function MergeSorted(Of Tvalue As IComparable(Of Tvalue))(e As IEnumerable(Of IEnumerable(Of Tvalue))) As IEnumerable(Of Tvalue)
+        Dim inputs As List(Of Tuple(Of Tvalue, IEnumerator(Of Tvalue)))
+        inputs = e.SelectMany(Iterator Function(x As IEnumerable(Of Tvalue))
+                                  Dim x1 As IEnumerator(Of Tvalue) = x.GetEnumerator
+                                  If x1.MoveNext Then
+                                      Yield New Tuple(Of Tvalue, IEnumerator(Of Tvalue))(x1.Current, x1)
+                                  End If
+                              End Function).ToList
         Do While inputs.Count > 0
-            inputs.Sort()
+            inputs = inputs.OrderBy(Function(x As Tuple(Of Tvalue, IEnumerator(Of Tvalue)))
+                                        Return x.Item1
+                                    End Function).ToList
             Yield inputs(0).Item1
             If inputs(0).Item2.MoveNext() Then
                 inputs(0) = New Tuple(Of Tvalue, IEnumerator(Of Tvalue))(inputs(0).Item2.Current,
@@ -50,13 +50,13 @@ Module EnumerableExtensions
     ''' <returns>Enumerable of filtered values</returns>
     ''' <remarks></remarks>
     <Extension()>
-    Iterator Function FilterByPrevious(Of T)(input As IEnumerable(Of T),
+    Iterator Function FilterByPrevious(Of T As {Structure, IComparable(Of T)})(input As IEnumerable(Of T),
                                                   pairFilter As Func(Of T, T, Boolean)) As IEnumerable(Of T)
         Dim e As IEnumerator(Of T) = input.GetEnumerator
-        Dim previous_input As T = Nothing
-        Dim previous_output As T = Nothing
+        Dim previous_input As T? = Nothing
+        Dim previous_output As T? = Nothing
         Do While e.MoveNext
-            If previous_input Is Nothing OrElse pairFilter(previous_input, e.Current) Then
+            If previous_output Is Nothing OrElse pairFilter(CType(previous_output, T), e.Current) Then
                 Yield e.Current
                 previous_output = e.Current
                 previous_input = Nothing
@@ -65,7 +65,7 @@ Module EnumerableExtensions
             End If
         Loop
         If previous_input IsNot Nothing Then 'we need to output the last one
-            Yield previous_input
+            Yield CType(previous_input, T)
         End If
     End Function
 End Module

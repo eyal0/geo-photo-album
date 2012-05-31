@@ -99,7 +99,6 @@ Class MainForm
     End Sub
 
     Private Sub btnSort_Click(sender As System.Object, e As System.EventArgs) Handles btnSort.Click
-        Dim start_time As DateTimeOffset = DateTimeOffset.Now
         Dim sources As New List(Of String)
         For Each filename As String In txtSortSrc.Text.Split(";"c)
             sources.Add(filename.Trim(""""c))
@@ -138,11 +137,86 @@ Class MainForm
                    End Function)
             c.WriteFile(destination)
         End If
-        MsgBox((DateTimeOffset.Now - start_time).TotalSeconds)
     End Sub
 #End Region
 
 #Region "Filter CSV"
+    Private Sub btnFilterSrcFile_Click(sender As System.Object, e As System.EventArgs) Handles btnFilterSrcFile.Click
+        SourceFile_Click(sender, e, txtFilterSrc)
+    End Sub
 
+    Private Sub btnFilterSrcDir_Click(sender As System.Object, e As System.EventArgs) Handles btnFilterSrcDir.Click
+        SourceDir_Click(sender, e, txtFilterSrc)
+    End Sub
+
+    Private Sub btnFilterDestFile_Click(sender As System.Object, e As System.EventArgs) Handles btnFilterDestFile.Click
+        DestFile_Click(sender, e, txtFilterDest)
+    End Sub
+
+    Private Sub btnFilterDestDir_Click(sender As System.Object, e As System.EventArgs) Handles btnFilterDestDir.Click
+        DestDir_Click(sender, e, txtFilterDest)
+    End Sub
+
+    Private Sub btnFilter_Click(sender As System.Object, e As System.EventArgs) Handles btnFilter.Click
+        Dim sources As New List(Of String)
+        For Each filename As String In txtFilterSrc.Text.Split(";"c)
+            sources.Add(filename.Trim(""""c))
+        Next
+        Dim destination As String = txtFilterDest.Text.Trim(""""c)
+        If System.IO.Directory.Exists(destination) Then
+            Dim source_enumerables As New List(Of IEnumerable(Of String))
+            For Each source As String In sources
+                If System.IO.Directory.Exists(source) Then
+                    Dim csv_filenames As IEnumerable(Of String) = System.IO.Directory.EnumerateFiles(source, "*.csv", IO.SearchOption.AllDirectories)
+                    Dim csv_file_enumerables As IEnumerable(Of IEnumerable(Of String))
+                    csv_file_enumerables = csv_filenames.Select(Function(filename As String)
+                                                                    Return System.IO.File.ReadLines(filename)
+                                                                End Function)
+                    source_enumerables.AddRange(csv_file_enumerables)
+                ElseIf System.IO.File.Exists(source) Then
+                    source_enumerables.Add(System.IO.File.ReadLines(source))
+                Else
+                    Throw New ApplicationException(source + " not found")
+                End If
+            Next
+            Dim csvs_rows As IEnumerable(Of IEnumerable(Of Dictionary(Of String, String)))
+            csvs_rows = source_enumerables.Select(Function(csv_file_lines As IEnumerable(Of String))
+                                                      Return Csv.EnumerateLines(csv_file_lines)
+                                                  End Function)
+            Dim gps_samples_enumerable As IEnumerable(Of IEnumerable(Of GpsSample))
+            gps_samples_enumerable = csvs_rows.Select(Function(csv_rows As IEnumerable(Of IDictionary(Of String, String)))
+                                                          Return csv_rows.Select(Function(dict As IDictionary(Of String, String))
+                                                                                     Return GpsSample.FromDict(dict)
+                                                                                 End Function)
+                                                      End Function)
+            Dim gps_samples As IEnumerable(Of GpsSample)
+            gps_samples = gps_samples_enumerable.MergeSorted()
+            Dim filtered_gps_samples As IEnumerable(Of GpsSample)
+            filtered_gps_samples = gps_samples.FilterByPrevious(Function(x As GpsSample, y As GpsSample)
+                                                                    Return x.Coordinate.ZoomToPoint(0).Floor <> y.Coordinate.ZoomToPoint(0).Floor
+                                                                End Function)
+            For Each g As GpsSample In filtered_gps_samples
+                Debug.WriteLine(g)
+            Next
+        Else 'it's a file destination
+            Dim c As New Csv()
+            For Each source As String In sources
+                If System.IO.Directory.Exists(source) Then
+                    For Each csv_file As String In System.IO.Directory.GetFiles(source, "*.csv", IO.SearchOption.AllDirectories)
+                        c.Read(csv_file)
+                    Next
+                ElseIf System.IO.File.Exists(source) Then
+                    c.Read(source)
+                Else
+                    Throw New ApplicationException(source + " not found")
+                End If
+            Next
+            c.Sort(Function(x As IDictionary(Of String, String))
+                       Return GpsSample.FromDict(x)
+                   End Function)
+            c.WriteFile(destination)
+        End If
+    End Sub
 #End Region
+
 End Class

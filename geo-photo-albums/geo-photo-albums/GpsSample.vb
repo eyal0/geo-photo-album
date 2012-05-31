@@ -20,4 +20,8 @@
     Public Function CompareTo(other As GpsSample) As Integer Implements System.IComparable(Of GpsSample).CompareTo
         Return Me.Datetime.CompareTo(other.Datetime)
     End Function
+
+    Public Overrides Function ToString() As String
+        Return Datetime.ToString + " " + Coordinate.ToString
+    End Function
 End Structure
