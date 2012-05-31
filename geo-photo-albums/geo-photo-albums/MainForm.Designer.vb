@@ -33,6 +33,7 @@ Partial Class MainForm
         Me.lblSource = New System.Windows.Forms.Label()
         Me.txtSource = New System.Windows.Forms.TextBox()
         Me.TabPage2 = New System.Windows.Forms.TabPage()
+        Me.btnSort = New System.Windows.Forms.Button()
         Me.MainTab.SuspendLayout()
         Me.SortCsvTab.SuspendLayout()
         Me.SuspendLayout()
@@ -45,11 +46,12 @@ Partial Class MainForm
         Me.MainTab.Location = New System.Drawing.Point(0, 0)
         Me.MainTab.Name = "MainTab"
         Me.MainTab.SelectedIndex = 0
-        Me.MainTab.Size = New System.Drawing.Size(562, 373)
+        Me.MainTab.Size = New System.Drawing.Size(821, 373)
         Me.MainTab.TabIndex = 0
         '
         'SortCsvTab
         '
+        Me.SortCsvTab.Controls.Add(Me.btnSort)
         Me.SortCsvTab.Controls.Add(Me.btnDestFile)
         Me.SortCsvTab.Controls.Add(Me.btnSourceDir)
         Me.SortCsvTab.Controls.Add(Me.lblDestination)
@@ -61,7 +63,7 @@ Partial Class MainForm
         Me.SortCsvTab.Location = New System.Drawing.Point(4, 22)
         Me.SortCsvTab.Name = "SortCsvTab"
         Me.SortCsvTab.Padding = New System.Windows.Forms.Padding(3)
-        Me.SortCsvTab.Size = New System.Drawing.Size(554, 347)
+        Me.SortCsvTab.Size = New System.Drawing.Size(813, 347)
         Me.SortCsvTab.TabIndex = 0
         Me.SortCsvTab.Text = "Sort CSV"
         Me.SortCsvTab.UseVisualStyleBackColor = True
@@ -69,7 +71,7 @@ Partial Class MainForm
         'btnDestFile
         '
         Me.btnDestFile.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.btnDestFile.Location = New System.Drawing.Point(430, 35)
+        Me.btnDestFile.Location = New System.Drawing.Point(689, 35)
         Me.btnDestFile.Name = "btnDestFile"
         Me.btnDestFile.Size = New System.Drawing.Size(55, 23)
         Me.btnDestFile.TabIndex = 7
@@ -79,7 +81,7 @@ Partial Class MainForm
         'btnSourceDir
         '
         Me.btnSourceDir.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.btnSourceDir.Location = New System.Drawing.Point(491, 6)
+        Me.btnSourceDir.Location = New System.Drawing.Point(750, 6)
         Me.btnSourceDir.Name = "btnSourceDir"
         Me.btnSourceDir.Size = New System.Drawing.Size(55, 23)
         Me.btnSourceDir.TabIndex = 6
@@ -101,13 +103,14 @@ Partial Class MainForm
             Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
         Me.txtDestination.Location = New System.Drawing.Point(85, 37)
         Me.txtDestination.Name = "txtDestination"
-        Me.txtDestination.Size = New System.Drawing.Size(339, 20)
+        Me.txtDestination.Size = New System.Drawing.Size(598, 20)
         Me.txtDestination.TabIndex = 4
+        Me.txtDestination.Text = "C:\Users\Eyal\Documents\coding\geo-photo-albums\sorted_csv"
         '
         'btnDestDir
         '
         Me.btnDestDir.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.btnDestDir.Location = New System.Drawing.Point(491, 35)
+        Me.btnDestDir.Location = New System.Drawing.Point(750, 35)
         Me.btnDestDir.Name = "btnDestDir"
         Me.btnDestDir.Size = New System.Drawing.Size(55, 23)
         Me.btnDestDir.TabIndex = 3
@@ -117,7 +120,7 @@ Partial Class MainForm
         'btnSourceFile
         '
         Me.btnSourceFile.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.btnSourceFile.Location = New System.Drawing.Point(430, 6)
+        Me.btnSourceFile.Location = New System.Drawing.Point(689, 6)
         Me.btnSourceFile.Name = "btnSourceFile"
         Me.btnSourceFile.Size = New System.Drawing.Size(55, 23)
         Me.btnSourceFile.TabIndex = 2
@@ -139,8 +142,10 @@ Partial Class MainForm
             Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
         Me.txtSource.Location = New System.Drawing.Point(85, 8)
         Me.txtSource.Name = "txtSource"
-        Me.txtSource.Size = New System.Drawing.Size(339, 20)
+        Me.txtSource.Size = New System.Drawing.Size(598, 20)
         Me.txtSource.TabIndex = 0
+        Me.txtSource.Text = "C:\Users\Eyal\Documents\coding\geo-photo-albums\csv\BT747log_20111018_199_FUJI.cs" & _
+    "v"
         '
         'TabPage2
         '
@@ -152,11 +157,20 @@ Partial Class MainForm
         Me.TabPage2.Text = "TabPage2"
         Me.TabPage2.UseVisualStyleBackColor = True
         '
+        'btnSort
+        '
+        Me.btnSort.Location = New System.Drawing.Point(296, 158)
+        Me.btnSort.Name = "btnSort"
+        Me.btnSort.Size = New System.Drawing.Size(75, 23)
+        Me.btnSort.TabIndex = 8
+        Me.btnSort.Text = "Sort!"
+        Me.btnSort.UseVisualStyleBackColor = True
+        '
         'MainForm
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
-        Me.ClientSize = New System.Drawing.Size(562, 373)
+        Me.ClientSize = New System.Drawing.Size(821, 373)
         Me.Controls.Add(Me.MainTab)
         Me.Name = "MainForm"
         Me.Text = "GeoPhotoAlbums"
@@ -177,5 +191,6 @@ Partial Class MainForm
     Friend WithEvents TabPage2 As System.Windows.Forms.TabPage
     Friend WithEvents btnSourceDir As System.Windows.Forms.Button
     Friend WithEvents btnDestFile As System.Windows.Forms.Button
+    Friend WithEvents btnSort As System.Windows.Forms.Button
 
 End Class
