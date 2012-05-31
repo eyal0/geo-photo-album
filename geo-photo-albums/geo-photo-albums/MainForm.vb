@@ -2,74 +2,86 @@
 
 Class MainForm
 
-#Region "Sort CSV"
-    Private Sub btnSourceFile_Click(sender As System.Object, e As System.EventArgs) Handles btnSourceFile.Click
+    Private Sub SourceFile_Click(sender As System.Object, e As System.EventArgs, txt As TextBox)
         Dim ofd As New OpenFileDialog
         ofd.DefaultExt = "csv"
-        If System.IO.File.Exists(txtSource.Text) Then
-            ofd.FileName = txtSource.Text
-            ofd.InitialDirectory = System.IO.Path.GetDirectoryName(txtSource.Text)
-        ElseIf System.IO.Directory.Exists(txtSource.Text) Then
-            ofd.InitialDirectory = txtSource.Text
+        If System.IO.File.Exists(txt.Text) Then
+            ofd.FileName = txt.Text
+            ofd.InitialDirectory = System.IO.Path.GetDirectoryName(txt.Text)
+        ElseIf System.IO.Directory.Exists(txt.Text) Then
+            ofd.InitialDirectory = txt.Text
         End If
         ofd.Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*"
         ofd.Multiselect = True
         ofd.Title = "Find CSV File(s)..."
         If ofd.ShowDialog(Me) = Windows.Forms.DialogResult.OK Then
             If ofd.FileNames.Count > 1 Then
-                txtSource.Text = String.Join(",", ofd.FileNames.Select(Function(s As String)
-                                                                           Return """" + s + """"
-                                                                       End Function))
+                txt.Text = String.Join(",", ofd.FileNames.Select(Function(s As String)
+                                                                     Return """" + s + """"
+                                                                 End Function))
             Else
-                txtSource.Text = ofd.FileNames(0)
+                txt.Text = ofd.FileNames(0)
             End If
         End If
         ofd.Dispose()
     End Sub
-
-    Private Sub btnSourceDir_Click(sender As System.Object, e As System.EventArgs) Handles btnSourceDir.Click
+    Private Sub SourceDir_Click(sender As System.Object, e As System.EventArgs, txt As TextBox)
         Dim fbd As New FolderBrowserDialog
         fbd.Description = "Find CSV Folder..."
-        If System.IO.File.Exists(txtSource.Text) Then
-            fbd.SelectedPath = System.IO.Path.GetDirectoryName(txtSource.Text)
-        ElseIf System.IO.Directory.Exists(txtSource.Text) Then
-            fbd.SelectedPath = txtSource.Text
+        If System.IO.File.Exists(txt.Text) Then
+            fbd.SelectedPath = System.IO.Path.GetDirectoryName(txt.Text)
+        ElseIf System.IO.Directory.Exists(txt.Text) Then
+            fbd.SelectedPath = txt.Text
         End If
         If fbd.ShowDialog(Me) = Windows.Forms.DialogResult.OK Then
-            txtSource.Text = fbd.SelectedPath
+            txt.Text = fbd.SelectedPath
         End If
         fbd.Dispose()
     End Sub
-
-    Private Sub btnDestFile_Click(sender As System.Object, e As System.EventArgs) Handles btnDestFile.Click
+    Private Sub DestFile_Click(sender As System.Object, e As System.EventArgs, txt As TextBox)
         Dim sfd As New SaveFileDialog
         sfd.DefaultExt = "csv"
-        If System.IO.File.Exists(txtDestination.Text) Then
-            sfd.FileName = txtDestination.Text
-            sfd.InitialDirectory = System.IO.Path.GetDirectoryName(txtDestination.Text)
-        ElseIf System.IO.Directory.Exists(txtDestination.Text) Then
-            sfd.InitialDirectory = txtDestination.Text
+        If System.IO.File.Exists(txt.Text) Then
+            sfd.FileName = txt.Text
+            sfd.InitialDirectory = System.IO.Path.GetDirectoryName(txt.Text)
+        ElseIf System.IO.Directory.Exists(txt.Text) Then
+            sfd.InitialDirectory = txt.Text
         End If
         sfd.Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*"
         sfd.Title = "Select output file..."
         If sfd.ShowDialog(Me) = Windows.Forms.DialogResult.OK Then
-            txtDestination.Text = sfd.FileName
+            txt.Text = sfd.FileName
         End If
         sfd.Dispose()
     End Sub
-
-    Private Sub btnDestDir_Click(sender As System.Object, e As System.EventArgs) Handles btnDestDir.Click
+    Private Sub DestDir_Click(sender As System.Object, e As System.EventArgs, txt As TextBox)
         Dim fbd As New FolderBrowserDialog
         fbd.Description = "Select output Folder..."
-        If System.IO.File.Exists(txtDestination.Text) Then
-            fbd.SelectedPath = System.IO.Path.GetDirectoryName(txtDestination.Text)
-        ElseIf System.IO.Directory.Exists(txtDestination.Text) Then
-            fbd.SelectedPath = txtDestination.Text
+        If System.IO.File.Exists(txt.Text) Then
+            fbd.SelectedPath = System.IO.Path.GetDirectoryName(txt.Text)
+        ElseIf System.IO.Directory.Exists(txt.Text) Then
+            fbd.SelectedPath = txt.Text
         End If
         If fbd.ShowDialog(Me) = Windows.Forms.DialogResult.OK Then
-            txtDestination.Text = fbd.SelectedPath
+            txt.Text = fbd.SelectedPath
         End If
         fbd.Dispose()
+    End Sub
+#Region "Sort CSV"
+    Private Sub btnSourceFile_Click(sender As System.Object, e As System.EventArgs) Handles btnSortSrcFile.Click
+        SourceFile_Click(sender, e, txtSortSrc)
+    End Sub
+
+    Private Sub btnSourceDir_Click(sender As System.Object, e As System.EventArgs) Handles btnSortSrcDir.Click
+        SourceDir_Click(sender, e, txtSortSrc)
+    End Sub
+
+    Private Sub btnDestFile_Click(sender As System.Object, e As System.EventArgs) Handles btnSortDestFile.Click
+        DestFile_Click(sender, e, txtSortDest)
+    End Sub
+
+    Private Sub btnDestDir_Click(sender As System.Object, e As System.EventArgs) Handles btnSortDestDir.Click
+        DestDir_Click(sender, e, txtSortDest)
     End Sub
 
     Private Sub sort_dir_recursive(source_dir As String, dest_dir As String)
@@ -89,10 +101,10 @@ Class MainForm
     Private Sub btnSort_Click(sender As System.Object, e As System.EventArgs) Handles btnSort.Click
         Dim start_time As DateTimeOffset = DateTimeOffset.Now
         Dim sources As New List(Of String)
-        For Each filename As String In txtSource.Text.Split(";"c)
+        For Each filename As String In txtSortSrc.Text.Split(";"c)
             sources.Add(filename.Trim(""""c))
         Next
-        Dim destination As String = txtDestination.Text.Trim(""""c)
+        Dim destination As String = txtSortDest.Text.Trim(""""c)
         If System.IO.Directory.Exists(destination) Then
             For Each source As String In sources
                 If System.IO.Directory.Exists(source) Then
@@ -130,4 +142,7 @@ Class MainForm
     End Sub
 #End Region
 
+#Region "Filter CSV"
+
+#End Region
 End Class

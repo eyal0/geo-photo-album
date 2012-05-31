@@ -23,25 +23,35 @@ Partial Class MainForm
     <System.Diagnostics.DebuggerStepThrough()> _
     Private Sub InitializeComponent()
         Me.MainTab = New System.Windows.Forms.TabControl()
-        Me.SortCsvTab = New System.Windows.Forms.TabPage()
-        Me.btnDestFile = New System.Windows.Forms.Button()
-        Me.btnSourceDir = New System.Windows.Forms.Button()
-        Me.lblDestination = New System.Windows.Forms.Label()
-        Me.txtDestination = New System.Windows.Forms.TextBox()
-        Me.btnDestDir = New System.Windows.Forms.Button()
-        Me.btnSourceFile = New System.Windows.Forms.Button()
-        Me.lblSource = New System.Windows.Forms.Label()
-        Me.txtSource = New System.Windows.Forms.TextBox()
-        Me.TabPage2 = New System.Windows.Forms.TabPage()
+        Me.TabSortCsv = New System.Windows.Forms.TabPage()
+        Me.btnSortDestFile = New System.Windows.Forms.Button()
+        Me.btnSortSrcDir = New System.Windows.Forms.Button()
+        Me.lblSortDest = New System.Windows.Forms.Label()
+        Me.txtSortDest = New System.Windows.Forms.TextBox()
+        Me.btnSortDestDir = New System.Windows.Forms.Button()
+        Me.btnSortSrcFile = New System.Windows.Forms.Button()
+        Me.lblSortSrc = New System.Windows.Forms.Label()
+        Me.txtSortSrc = New System.Windows.Forms.TextBox()
+        Me.TabFilterCsv = New System.Windows.Forms.TabPage()
         Me.btnSort = New System.Windows.Forms.Button()
+        Me.btnFilterSrcDir = New System.Windows.Forms.Button()
+        Me.btnFilterSrcFile = New System.Windows.Forms.Button()
+        Me.lblFilterSrc = New System.Windows.Forms.Label()
+        Me.txtFilterSrc = New System.Windows.Forms.TextBox()
+        Me.btnFilterDestFile = New System.Windows.Forms.Button()
+        Me.lblFilterDest = New System.Windows.Forms.Label()
+        Me.txtFilterDest = New System.Windows.Forms.TextBox()
+        Me.btnFilterDestDir = New System.Windows.Forms.Button()
+        Me.btnFilter = New System.Windows.Forms.Button()
         Me.MainTab.SuspendLayout()
-        Me.SortCsvTab.SuspendLayout()
+        Me.TabSortCsv.SuspendLayout()
+        Me.TabFilterCsv.SuspendLayout()
         Me.SuspendLayout()
         '
         'MainTab
         '
-        Me.MainTab.Controls.Add(Me.SortCsvTab)
-        Me.MainTab.Controls.Add(Me.TabPage2)
+        Me.MainTab.Controls.Add(Me.TabSortCsv)
+        Me.MainTab.Controls.Add(Me.TabFilterCsv)
         Me.MainTab.Dock = System.Windows.Forms.DockStyle.Fill
         Me.MainTab.Location = New System.Drawing.Point(0, 0)
         Me.MainTab.Name = "MainTab"
@@ -49,122 +59,219 @@ Partial Class MainForm
         Me.MainTab.Size = New System.Drawing.Size(821, 373)
         Me.MainTab.TabIndex = 0
         '
-        'SortCsvTab
+        'TabSortCsv
         '
-        Me.SortCsvTab.Controls.Add(Me.btnSort)
-        Me.SortCsvTab.Controls.Add(Me.btnDestFile)
-        Me.SortCsvTab.Controls.Add(Me.btnSourceDir)
-        Me.SortCsvTab.Controls.Add(Me.lblDestination)
-        Me.SortCsvTab.Controls.Add(Me.txtDestination)
-        Me.SortCsvTab.Controls.Add(Me.btnDestDir)
-        Me.SortCsvTab.Controls.Add(Me.btnSourceFile)
-        Me.SortCsvTab.Controls.Add(Me.lblSource)
-        Me.SortCsvTab.Controls.Add(Me.txtSource)
-        Me.SortCsvTab.Location = New System.Drawing.Point(4, 22)
-        Me.SortCsvTab.Name = "SortCsvTab"
-        Me.SortCsvTab.Padding = New System.Windows.Forms.Padding(3)
-        Me.SortCsvTab.Size = New System.Drawing.Size(813, 347)
-        Me.SortCsvTab.TabIndex = 0
-        Me.SortCsvTab.Text = "Sort CSV"
-        Me.SortCsvTab.UseVisualStyleBackColor = True
+        Me.TabSortCsv.Controls.Add(Me.btnSort)
+        Me.TabSortCsv.Controls.Add(Me.btnSortDestFile)
+        Me.TabSortCsv.Controls.Add(Me.btnSortSrcDir)
+        Me.TabSortCsv.Controls.Add(Me.lblSortDest)
+        Me.TabSortCsv.Controls.Add(Me.txtSortDest)
+        Me.TabSortCsv.Controls.Add(Me.btnSortDestDir)
+        Me.TabSortCsv.Controls.Add(Me.btnSortSrcFile)
+        Me.TabSortCsv.Controls.Add(Me.lblSortSrc)
+        Me.TabSortCsv.Controls.Add(Me.txtSortSrc)
+        Me.TabSortCsv.Location = New System.Drawing.Point(4, 22)
+        Me.TabSortCsv.Name = "TabSortCsv"
+        Me.TabSortCsv.Padding = New System.Windows.Forms.Padding(3)
+        Me.TabSortCsv.Size = New System.Drawing.Size(813, 347)
+        Me.TabSortCsv.TabIndex = 0
+        Me.TabSortCsv.Text = "Sort CSV"
+        Me.TabSortCsv.UseVisualStyleBackColor = True
         '
-        'btnDestFile
+        'btnSortDestFile
         '
-        Me.btnDestFile.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.btnDestFile.Location = New System.Drawing.Point(689, 35)
-        Me.btnDestFile.Name = "btnDestFile"
-        Me.btnDestFile.Size = New System.Drawing.Size(55, 23)
-        Me.btnDestFile.TabIndex = 7
-        Me.btnDestFile.Text = "File..."
-        Me.btnDestFile.UseVisualStyleBackColor = True
+        Me.btnSortDestFile.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.btnSortDestFile.Location = New System.Drawing.Point(691, 35)
+        Me.btnSortDestFile.Name = "btnSortDestFile"
+        Me.btnSortDestFile.Size = New System.Drawing.Size(55, 23)
+        Me.btnSortDestFile.TabIndex = 7
+        Me.btnSortDestFile.Text = "File..."
+        Me.btnSortDestFile.UseVisualStyleBackColor = True
         '
-        'btnSourceDir
+        'btnSortSrcDir
         '
-        Me.btnSourceDir.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.btnSourceDir.Location = New System.Drawing.Point(750, 6)
-        Me.btnSourceDir.Name = "btnSourceDir"
-        Me.btnSourceDir.Size = New System.Drawing.Size(55, 23)
-        Me.btnSourceDir.TabIndex = 6
-        Me.btnSourceDir.Text = "Folder..."
-        Me.btnSourceDir.UseVisualStyleBackColor = True
+        Me.btnSortSrcDir.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.btnSortSrcDir.Location = New System.Drawing.Point(752, 6)
+        Me.btnSortSrcDir.Name = "btnSortSrcDir"
+        Me.btnSortSrcDir.Size = New System.Drawing.Size(55, 23)
+        Me.btnSortSrcDir.TabIndex = 6
+        Me.btnSortSrcDir.Text = "Folder..."
+        Me.btnSortSrcDir.UseVisualStyleBackColor = True
         '
-        'lblDestination
+        'lblSortDest
         '
-        Me.lblDestination.AutoSize = True
-        Me.lblDestination.Location = New System.Drawing.Point(8, 40)
-        Me.lblDestination.Name = "lblDestination"
-        Me.lblDestination.Size = New System.Drawing.Size(60, 13)
-        Me.lblDestination.TabIndex = 5
-        Me.lblDestination.Text = "Destination"
+        Me.lblSortDest.AutoSize = True
+        Me.lblSortDest.Location = New System.Drawing.Point(8, 40)
+        Me.lblSortDest.Name = "lblSortDest"
+        Me.lblSortDest.Size = New System.Drawing.Size(60, 13)
+        Me.lblSortDest.TabIndex = 5
+        Me.lblSortDest.Text = "Destination"
         '
-        'txtDestination
+        'txtSortDest
         '
-        Me.txtDestination.Anchor = CType(((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Left) _
+        Me.txtSortDest.Anchor = CType(((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Left) _
             Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.txtDestination.Location = New System.Drawing.Point(85, 37)
-        Me.txtDestination.Name = "txtDestination"
-        Me.txtDestination.Size = New System.Drawing.Size(598, 20)
-        Me.txtDestination.TabIndex = 4
-        Me.txtDestination.Text = "C:\Users\Eyal\Documents\coding\geo-photo-albums\sorted_csv"
+        Me.txtSortDest.Location = New System.Drawing.Point(85, 37)
+        Me.txtSortDest.Name = "txtSortDest"
+        Me.txtSortDest.Size = New System.Drawing.Size(600, 20)
+        Me.txtSortDest.TabIndex = 4
+        Me.txtSortDest.Text = "C:\Users\Eyal\Documents\coding\geo-photo-albums\sorted_csv"
         '
-        'btnDestDir
+        'btnSortDestDir
         '
-        Me.btnDestDir.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.btnDestDir.Location = New System.Drawing.Point(750, 35)
-        Me.btnDestDir.Name = "btnDestDir"
-        Me.btnDestDir.Size = New System.Drawing.Size(55, 23)
-        Me.btnDestDir.TabIndex = 3
-        Me.btnDestDir.Text = "Folder..."
-        Me.btnDestDir.UseVisualStyleBackColor = True
+        Me.btnSortDestDir.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.btnSortDestDir.Location = New System.Drawing.Point(752, 35)
+        Me.btnSortDestDir.Name = "btnSortDestDir"
+        Me.btnSortDestDir.Size = New System.Drawing.Size(55, 23)
+        Me.btnSortDestDir.TabIndex = 3
+        Me.btnSortDestDir.Text = "Folder..."
+        Me.btnSortDestDir.UseVisualStyleBackColor = True
         '
-        'btnSourceFile
+        'btnSortSrcFile
         '
-        Me.btnSourceFile.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.btnSourceFile.Location = New System.Drawing.Point(689, 6)
-        Me.btnSourceFile.Name = "btnSourceFile"
-        Me.btnSourceFile.Size = New System.Drawing.Size(55, 23)
-        Me.btnSourceFile.TabIndex = 2
-        Me.btnSourceFile.Text = "File..."
-        Me.btnSourceFile.UseVisualStyleBackColor = True
+        Me.btnSortSrcFile.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.btnSortSrcFile.Location = New System.Drawing.Point(691, 6)
+        Me.btnSortSrcFile.Name = "btnSortSrcFile"
+        Me.btnSortSrcFile.Size = New System.Drawing.Size(55, 23)
+        Me.btnSortSrcFile.TabIndex = 2
+        Me.btnSortSrcFile.Text = "File..."
+        Me.btnSortSrcFile.UseVisualStyleBackColor = True
         '
-        'lblSource
+        'lblSortSrc
         '
-        Me.lblSource.AutoSize = True
-        Me.lblSource.Location = New System.Drawing.Point(8, 11)
-        Me.lblSource.Name = "lblSource"
-        Me.lblSource.Size = New System.Drawing.Size(41, 13)
-        Me.lblSource.TabIndex = 1
-        Me.lblSource.Text = "Source"
+        Me.lblSortSrc.AutoSize = True
+        Me.lblSortSrc.Location = New System.Drawing.Point(8, 11)
+        Me.lblSortSrc.Name = "lblSortSrc"
+        Me.lblSortSrc.Size = New System.Drawing.Size(41, 13)
+        Me.lblSortSrc.TabIndex = 1
+        Me.lblSortSrc.Text = "Source"
         '
-        'txtSource
+        'txtSortSrc
         '
-        Me.txtSource.Anchor = CType(((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Left) _
+        Me.txtSortSrc.Anchor = CType(((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Left) _
             Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.txtSource.Location = New System.Drawing.Point(85, 8)
-        Me.txtSource.Name = "txtSource"
-        Me.txtSource.Size = New System.Drawing.Size(598, 20)
-        Me.txtSource.TabIndex = 0
-        Me.txtSource.Text = "C:\Users\Eyal\Documents\coding\geo-photo-albums\csv\BT747log_20111018_199_FUJI.cs" & _
+        Me.txtSortSrc.Location = New System.Drawing.Point(85, 8)
+        Me.txtSortSrc.Name = "txtSortSrc"
+        Me.txtSortSrc.Size = New System.Drawing.Size(600, 20)
+        Me.txtSortSrc.TabIndex = 0
+        Me.txtSortSrc.Text = "C:\Users\Eyal\Documents\coding\geo-photo-albums\csv\BT747log_20111018_199_FUJI.cs" & _
     "v"
         '
-        'TabPage2
+        'TabFilterCsv
         '
-        Me.TabPage2.Location = New System.Drawing.Point(4, 22)
-        Me.TabPage2.Name = "TabPage2"
-        Me.TabPage2.Padding = New System.Windows.Forms.Padding(3)
-        Me.TabPage2.Size = New System.Drawing.Size(554, 347)
-        Me.TabPage2.TabIndex = 1
-        Me.TabPage2.Text = "TabPage2"
-        Me.TabPage2.UseVisualStyleBackColor = True
+        Me.TabFilterCsv.Controls.Add(Me.btnFilter)
+        Me.TabFilterCsv.Controls.Add(Me.btnFilterDestFile)
+        Me.TabFilterCsv.Controls.Add(Me.lblFilterDest)
+        Me.TabFilterCsv.Controls.Add(Me.txtFilterDest)
+        Me.TabFilterCsv.Controls.Add(Me.btnFilterDestDir)
+        Me.TabFilterCsv.Controls.Add(Me.btnFilterSrcDir)
+        Me.TabFilterCsv.Controls.Add(Me.btnFilterSrcFile)
+        Me.TabFilterCsv.Controls.Add(Me.lblFilterSrc)
+        Me.TabFilterCsv.Controls.Add(Me.txtFilterSrc)
+        Me.TabFilterCsv.Location = New System.Drawing.Point(4, 22)
+        Me.TabFilterCsv.Name = "TabFilterCsv"
+        Me.TabFilterCsv.Padding = New System.Windows.Forms.Padding(3)
+        Me.TabFilterCsv.Size = New System.Drawing.Size(813, 347)
+        Me.TabFilterCsv.TabIndex = 1
+        Me.TabFilterCsv.Text = "Filter CSV"
+        Me.TabFilterCsv.UseVisualStyleBackColor = True
         '
         'btnSort
         '
-        Me.btnSort.Location = New System.Drawing.Point(296, 158)
+        Me.btnSort.Anchor = CType((System.Windows.Forms.AnchorStyles.Bottom Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.btnSort.Location = New System.Drawing.Point(732, 318)
         Me.btnSort.Name = "btnSort"
         Me.btnSort.Size = New System.Drawing.Size(75, 23)
         Me.btnSort.TabIndex = 8
         Me.btnSort.Text = "Sort!"
         Me.btnSort.UseVisualStyleBackColor = True
+        '
+        'btnFilterSrcDir
+        '
+        Me.btnFilterSrcDir.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.btnFilterSrcDir.Location = New System.Drawing.Point(752, 6)
+        Me.btnFilterSrcDir.Name = "btnFilterSrcDir"
+        Me.btnFilterSrcDir.Size = New System.Drawing.Size(55, 23)
+        Me.btnFilterSrcDir.TabIndex = 10
+        Me.btnFilterSrcDir.Text = "Folder..."
+        Me.btnFilterSrcDir.UseVisualStyleBackColor = True
+        '
+        'btnFilterSrcFile
+        '
+        Me.btnFilterSrcFile.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.btnFilterSrcFile.Location = New System.Drawing.Point(691, 6)
+        Me.btnFilterSrcFile.Name = "btnFilterSrcFile"
+        Me.btnFilterSrcFile.Size = New System.Drawing.Size(55, 23)
+        Me.btnFilterSrcFile.TabIndex = 9
+        Me.btnFilterSrcFile.Text = "File..."
+        Me.btnFilterSrcFile.UseVisualStyleBackColor = True
+        '
+        'lblFilterSrc
+        '
+        Me.lblFilterSrc.AutoSize = True
+        Me.lblFilterSrc.Location = New System.Drawing.Point(8, 11)
+        Me.lblFilterSrc.Name = "lblFilterSrc"
+        Me.lblFilterSrc.Size = New System.Drawing.Size(41, 13)
+        Me.lblFilterSrc.TabIndex = 8
+        Me.lblFilterSrc.Text = "Source"
+        '
+        'txtFilterSrc
+        '
+        Me.txtFilterSrc.Anchor = CType(((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Left) _
+            Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.txtFilterSrc.Location = New System.Drawing.Point(85, 8)
+        Me.txtFilterSrc.Name = "txtFilterSrc"
+        Me.txtFilterSrc.Size = New System.Drawing.Size(600, 20)
+        Me.txtFilterSrc.TabIndex = 7
+        Me.txtFilterSrc.Text = "C:\Users\Eyal\Documents\coding\geo-photo-albums\sorted_csv"
+        '
+        'btnFilterDestFile
+        '
+        Me.btnFilterDestFile.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.btnFilterDestFile.Location = New System.Drawing.Point(691, 35)
+        Me.btnFilterDestFile.Name = "btnFilterDestFile"
+        Me.btnFilterDestFile.Size = New System.Drawing.Size(55, 23)
+        Me.btnFilterDestFile.TabIndex = 14
+        Me.btnFilterDestFile.Text = "File..."
+        Me.btnFilterDestFile.UseVisualStyleBackColor = True
+        '
+        'lblFilterDest
+        '
+        Me.lblFilterDest.AutoSize = True
+        Me.lblFilterDest.Location = New System.Drawing.Point(8, 40)
+        Me.lblFilterDest.Name = "lblFilterDest"
+        Me.lblFilterDest.Size = New System.Drawing.Size(60, 13)
+        Me.lblFilterDest.TabIndex = 13
+        Me.lblFilterDest.Text = "Destination"
+        '
+        'txtFilterDest
+        '
+        Me.txtFilterDest.Anchor = CType(((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Left) _
+            Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.txtFilterDest.Location = New System.Drawing.Point(85, 37)
+        Me.txtFilterDest.Name = "txtFilterDest"
+        Me.txtFilterDest.Size = New System.Drawing.Size(600, 20)
+        Me.txtFilterDest.TabIndex = 12
+        Me.txtFilterDest.Text = "C:\Users\Eyal\Documents\coding\geo-photo-albums\filtered_csv"
+        '
+        'btnFilterDestDir
+        '
+        Me.btnFilterDestDir.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.btnFilterDestDir.Location = New System.Drawing.Point(752, 35)
+        Me.btnFilterDestDir.Name = "btnFilterDestDir"
+        Me.btnFilterDestDir.Size = New System.Drawing.Size(55, 23)
+        Me.btnFilterDestDir.TabIndex = 11
+        Me.btnFilterDestDir.Text = "Folder..."
+        Me.btnFilterDestDir.UseVisualStyleBackColor = True
+        '
+        'btnFilter
+        '
+        Me.btnFilter.Location = New System.Drawing.Point(732, 318)
+        Me.btnFilter.Name = "btnFilter"
+        Me.btnFilter.Size = New System.Drawing.Size(75, 23)
+        Me.btnFilter.TabIndex = 15
+        Me.btnFilter.Text = "Filter!"
+        Me.btnFilter.UseVisualStyleBackColor = True
         '
         'MainForm
         '
@@ -175,22 +282,33 @@ Partial Class MainForm
         Me.Name = "MainForm"
         Me.Text = "GeoPhotoAlbums"
         Me.MainTab.ResumeLayout(False)
-        Me.SortCsvTab.ResumeLayout(False)
-        Me.SortCsvTab.PerformLayout()
+        Me.TabSortCsv.ResumeLayout(False)
+        Me.TabSortCsv.PerformLayout()
+        Me.TabFilterCsv.ResumeLayout(False)
+        Me.TabFilterCsv.PerformLayout()
         Me.ResumeLayout(False)
 
     End Sub
     Friend WithEvents MainTab As System.Windows.Forms.TabControl
-    Friend WithEvents SortCsvTab As System.Windows.Forms.TabPage
-    Friend WithEvents lblDestination As System.Windows.Forms.Label
-    Friend WithEvents txtDestination As System.Windows.Forms.TextBox
-    Friend WithEvents btnDestDir As System.Windows.Forms.Button
-    Friend WithEvents btnSourceFile As System.Windows.Forms.Button
-    Friend WithEvents lblSource As System.Windows.Forms.Label
-    Friend WithEvents txtSource As System.Windows.Forms.TextBox
-    Friend WithEvents TabPage2 As System.Windows.Forms.TabPage
-    Friend WithEvents btnSourceDir As System.Windows.Forms.Button
-    Friend WithEvents btnDestFile As System.Windows.Forms.Button
+    Friend WithEvents TabSortCsv As System.Windows.Forms.TabPage
+    Friend WithEvents lblSortDest As System.Windows.Forms.Label
+    Friend WithEvents txtSortDest As System.Windows.Forms.TextBox
+    Friend WithEvents btnSortDestDir As System.Windows.Forms.Button
+    Friend WithEvents btnSortSrcFile As System.Windows.Forms.Button
+    Friend WithEvents lblSortSrc As System.Windows.Forms.Label
+    Friend WithEvents txtSortSrc As System.Windows.Forms.TextBox
+    Friend WithEvents TabFilterCsv As System.Windows.Forms.TabPage
+    Friend WithEvents btnSortSrcDir As System.Windows.Forms.Button
+    Friend WithEvents btnSortDestFile As System.Windows.Forms.Button
     Friend WithEvents btnSort As System.Windows.Forms.Button
+    Friend WithEvents btnFilterSrcDir As System.Windows.Forms.Button
+    Friend WithEvents btnFilterSrcFile As System.Windows.Forms.Button
+    Friend WithEvents lblFilterSrc As System.Windows.Forms.Label
+    Friend WithEvents txtFilterSrc As System.Windows.Forms.TextBox
+    Friend WithEvents btnFilter As System.Windows.Forms.Button
+    Friend WithEvents btnFilterDestFile As System.Windows.Forms.Button
+    Friend WithEvents lblFilterDest As System.Windows.Forms.Label
+    Friend WithEvents txtFilterDest As System.Windows.Forms.TextBox
+    Friend WithEvents btnFilterDestDir As System.Windows.Forms.Button
 
 End Class
