@@ -68,4 +68,29 @@ Module EnumerableExtensions
             Yield CType(previous_input, T)
         End If
     End Function
+
+    ''' <summary>
+    ''' Like Select but special case for the last element
+    ''' </summary>
+    ''' <typeparam name="Tin"></typeparam>
+    ''' <typeparam name="Tout"></typeparam>
+    ''' <param name="e">enumerable input</param>
+    ''' <param name="butLast">function to apply to all but the last member</param>
+    ''' <param name="last"></param>
+    ''' <returns></returns>
+    ''' <remarks></remarks>
+    <Extension()>
+    Iterator Function Select2(Of Tin, Tout)(e As IEnumerable(Of Tin),
+                                            butLast As Func(Of Tin, Tout),
+                                            last As Func(Of Tin, Tout)) As IEnumerable(Of Tout)
+        Dim e1 As IEnumerator(Of Tin) = e.GetEnumerator
+        Dim previous As Tin = e1.Current
+        Do While e1.MoveNext()
+            If previous IsNot Nothing Then
+                Yield butLast(previous)
+            End If
+            previous = e1.Current
+        Loop
+        Yield last(previous)
+    End Function
 End Module

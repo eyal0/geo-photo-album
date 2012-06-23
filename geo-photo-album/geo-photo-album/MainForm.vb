@@ -1,4 +1,5 @@
 ﻿Imports System.Runtime.CompilerServices
+Imports System.Web.Script.Serialization
 
 Class MainForm
 
@@ -219,4 +220,202 @@ Class MainForm
     End Sub
 #End Region
 
+#Region "Tag Files"
+    Dim myJson As New Json
+
+    Private Sub btnTagDestFile_Click(sender As System.Object, e As System.EventArgs) Handles btnLoadJson.Click
+        Dim ofd As New OpenFileDialog
+        ofd.DefaultExt = "json"
+        If System.IO.File.Exists(txtTagFile.Text) Then
+            ofd.FileName = System.IO.Path.GetFileName(txtTagFile.Text)
+            ofd.InitialDirectory = System.IO.Path.GetDirectoryName(txtTagFile.Text)
+        ElseIf System.IO.Directory.Exists(txtTagFile.Text) Then
+            ofd.InitialDirectory = txtTagFile.Text
+        End If
+        ofd.Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*"
+        ofd.Title = "Select JSON file..."
+        If ofd.ShowDialog(Me) = Windows.Forms.DialogResult.OK Then
+            txtTagFile.Text = ofd.FileName
+            'Now load in the tags and everything else
+            If System.IO.File.Exists(txtTagFile.Text) Then
+                myJson.MergeFile(txtTagFile.Text)
+            End If
+        End If
+        ofd.Dispose()
+    End Sub
+
+    Private Sub txtTagFilter_KeyPress(sender As System.Object, e As System.Windows.Forms.KeyPressEventArgs) Handles txtTagFilter.KeyPress
+        If e.KeyChar = vbCr Then
+            btnFilterTags.PerformClick()
+        End If
+    End Sub
+#End Region
+    ' utility function to convert a byte array into a hex string
+    Private Function ByteArrayToString(ByVal arrInput() As Byte) As String
+        Dim sb As New System.Text.StringBuilder(arrInput.Length * 2)
+        For i As Integer = 0 To arrInput.Length - 1
+            sb.Append(arrInput(i).ToString("X2"))
+        Next
+        Return sb.ToString().ToLower
+    End Function
+
+    Public Function SHA1CalcFile(ByVal filepath As String) As String
+        ' open file (as read-only)
+        Using reader As New System.IO.FileStream(filepath, IO.FileMode.Open, IO.FileAccess.Read)
+            Using sha1 As New System.Security.Cryptography.SHA1CryptoServiceProvider
+                ' hash contents of this stream
+                Dim hash() As Byte = sha1.ComputeHash(reader)
+                ' return formatted hash
+                Return ByteArrayToString(hash)
+            End Using
+        End Using
+    End Function
+
+    Private Sub UpdateFileTags(filter_text As String)
+        txtTagFilter.InvokeEx(Sub()
+                                  txtTagFilter.Text = filter_text
+                              End Sub)
+        lvFileTags.InvokeEx(Sub()
+                                lvFileTags.Items.Clear()
+                            End Sub)
+        If (System.IO.Directory.Exists(filter_text) AndAlso
+            (New System.IO.DirectoryInfo(filter_text).Attributes And IO.FileAttributes.ReparsePoint) = 0) Then
+            If System.IO.Directory.GetParent(filter_text) IsNot Nothing Then
+                Dim lvi_subdir As New ListViewItem("..")
+                lvi_subdir.Tag = System.IO.Directory.GetParent(filter_text).FullName
+                lvi_subdir.ImageKey = CacheShellIcon(System.IO.Directory.GetParent(filter_text).FullName)
+                lvFileTags.InvokeEx(Sub()
+                                        lvFileTags.Items.Add(lvi_subdir)
+                                    End Sub)
+            End If
+            For Each d As String In System.IO.Directory.EnumerateDirectories(filter_text)
+                If lvFileTagsWorker.CancellationPending Then
+                    Exit Sub
+                End If
+                Dim d_info As New System.IO.DirectoryInfo(d)
+                If (d_info.Attributes And IO.FileAttributes.ReparsePoint) = 0 Then
+                    Dim lvi As New ListViewItem(System.IO.Path.GetFileName(d))
+                    lvi.Tag = d
+                    lvi.ImageKey = CacheShellIcon(d)
+                    lvFileTags.InvokeEx(Sub()
+                                            lvFileTags.Items.Add(lvi)
+                                        End Sub)
+                End If
+            Next
+            Dim json_files As Dictionary(Of String, Json) = Nothing
+            If myJson.ContainsKey("Tags") Then
+                json_files = myJson("Tags")
+            End If
+            For Each f As String In System.IO.Directory.EnumerateFiles(filter_text)
+                If lvFileTagsWorker.CancellationPending Then
+                    Exit Sub
+                End If
+                Dim lvi As New ListViewItem(System.IO.Path.GetFileName(f))
+                If json_files IsNot Nothing Then
+                    Dim sha1_hash As String = SHA1CalcFile(f)
+                    If json_files.ContainsKey(sha1_hash) Then
+                        lvi.SubItems.Add(String.Join("", json_files(sha1_hash).ToString("", "").Skip(1).Select2(Function(s As String)
+                                                                                                                    Return s
+                                                                                                                End Function,
+                                                                                                                Function(s As String)
+                                                                                                                    Return ""
+                                                                                                                End Function)))
+                    End If
+                End If
+                lvi.Tag = f
+                lvi.ImageKey = CacheShellIcon(f)
+                lvFileTags.InvokeEx(Sub()
+                                        lvFileTags.Items.Add(lvi)
+                                    End Sub)
+            Next
+        End If
+    End Sub
+
+    Private Sub btnFilterTags_Click(sender As System.Object, e As System.EventArgs) Handles btnFilterTags.Click
+        Do While lvFileTagsWorker.IsBusy
+            lvFileTagsWorker.CancelAsync()
+            Application.DoEvents()
+        Loop
+        lvFileTagsWorker.RunWorkerAsync(txtTagFilter.Text)
+    End Sub
+
+    Private Sub lvFileTags_MouseDoubleClick(sender As System.Object, e As System.Windows.Forms.MouseEventArgs) Handles lvFileTags.MouseDoubleClick
+        Dim s As String = CType(lvFileTags.SelectedItems(0).Tag, String)
+        If System.IO.Directory.Exists(s) Then
+            Do While lvFileTagsWorker.IsBusy
+                lvFileTagsWorker.CancelAsync()
+                Application.DoEvents()
+            Loop
+            lvFileTagsWorker.RunWorkerAsync(s)
+        End If
+    End Sub
+
+    Function CacheShellIcon(ByVal argPath As String) As String
+        Dim mKey As String = argPath
+        ' check if an icon for this key has already been added to the collection
+        If ImageList1.Images.ContainsKey(mKey) = False Then
+            ImageList1.Images.Add(mKey, GetShellIconAsImage(argPath))
+        End If
+        Return mKey
+    End Function
+
+    Private Sub lvFileTagsWorker_DoWork(sender As System.Object, e As System.ComponentModel.DoWorkEventArgs) Handles lvFileTagsWorker.DoWork
+        UpdateFileTags(CType(e.Argument, String))
+    End Sub
+
+    Private Sub btnSaveJson_Click(sender As System.Object, e As System.EventArgs) Handles btnSaveJson.Click
+        Dim s As New System.Web.Script.Serialization.JavaScriptSerializer
+        Dim sb As New System.Text.StringBuilder
+        s.Serialize(myJson, sb)
+        System.IO.File.WriteAllText(txtTagFile.Text, sb.ToString)
+    End Sub
+
+    Function StringToDict(s As String) As Dictionary(Of String, Object)
+        Dim ret As New Dictionary(Of String, Object)
+        For Each tag As String In s.Split(","c, ";"c)
+            tag = tag.Trim
+            If tag.Contains(":") Then
+                ret.Add(tag.Substring(0, tag.IndexOf(":")).Trim,
+                                 tag.Substring(tag.IndexOf(":") + 1).Trim)
+            Else
+                ret.Add(tag, "")
+            End If
+        Next
+        Return ret
+    End Function
+
+    Function DictToString(d As Dictionary(Of String, Object)) As String
+        Return String.Join(", ", d.Select(Function(kvp As KeyValuePair(Of String, Object))
+                                              If kvp.Value.ToString <> "" Then
+                                                  Return kvp.Key + ": " + kvp.Value.ToString
+                                              Else
+                                                  Return kvp.Key
+                                              End If
+                                          End Function))
+    End Function
+
+    Private Sub btnSaveTags_Click(sender As System.Object, e As System.EventArgs) Handles btnSaveTags.Click
+        If Not myJson.ContainsKey("Tags") Then
+            myJson.Add("Tags")
+        End If
+        Dim json_all_tags As Json
+        json_all_tags = myJson("Tags")
+        Dim hash As String = SHA1CalcFile(DirectCast(lvFileTags.SelectedItems(0).Tag, String))
+        If Not json_all_tags.ContainsKey(hash) Then
+            json_all_tags.Add(hash, Json.FromString(txtTags.Text))
+        Else
+            json_all_tags(hash) = Json.FromString(txtTags.Text)
+        End If
+        If json_all_tags(hash).Count = 0 Then
+            json_all_tags.Remove(hash)
+        End If
+    End Sub
+
+    Private Sub lvFileTags_SelectedIndexChanged(sender As System.Object, e As System.EventArgs) Handles lvFileTags.SelectedIndexChanged
+        If lvFileTags.SelectedItems.Count > 0 AndAlso lvFileTags.SelectedItems(0).SubItems.Count > 1 Then
+            txtTags.Text = lvFileTags.SelectedItems(0).SubItems(1).Text
+        Else
+            txtTags.Text = ""
+        End If
+    End Sub
 End Class
