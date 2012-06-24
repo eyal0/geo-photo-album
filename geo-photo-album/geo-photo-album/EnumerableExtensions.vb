@@ -84,13 +84,106 @@ Module EnumerableExtensions
                                             butLast As Func(Of Tin, Tout),
                                             last As Func(Of Tin, Tout)) As IEnumerable(Of Tout)
         Dim e1 As IEnumerator(Of Tin) = e.GetEnumerator
-        Dim previous As Tin = e1.Current
-        Do While e1.MoveNext()
-            If previous IsNot Nothing Then
-                Yield butLast(previous)
+        If e1.MoveNext Then
+            Dim previous As Tin = e1.Current
+
+            Do While e1.MoveNext()
+                If previous IsNot Nothing Then
+                    Yield butLast(previous)
+                End If
+                previous = e1.Current
+            Loop
+            Yield last(previous)
+        End If
+    End Function
+
+    Interface IIterator(Of T)
+        Inherits IEnumerator(Of T)
+        ''' <summary>
+        ''' True if current is valid
+        ''' </summary>
+        ''' <value>True if current is valid</value>
+        ''' <returns>True or False</returns>
+        ''' <remarks></remarks>
+        ReadOnly Property HasCurrent As Boolean
+
+        ''' <summary>
+        ''' Returns current element and moves to next
+        ''' </summary>
+        ''' <returns>current element</returns>
+        ''' <remarks></remarks>
+        Function [Next]() As T
+    End Interface
+
+    Class Iterator(Of T)
+        Implements IIterator(Of T)
+
+        Private e As IEnumerator(Of T)
+        Private hasCurrent_ As Boolean = False
+
+        Sub New(e As IEnumerator(Of T))
+            Me.e = e
+        End Sub
+
+        Public ReadOnly Property HasCurrent As Boolean Implements IIterator(Of T).HasCurrent
+            Get
+                Return hasCurrent_
+            End Get
+        End Property
+
+        Public ReadOnly Property Current As T Implements IEnumerator(Of T).Current
+            Get
+                Return e.Current
+            End Get
+        End Property
+
+        Public ReadOnly Property Current1 As Object Implements IEnumerator.Current
+            Get
+                Return e.Current
+            End Get
+        End Property
+
+        Public Function MoveNext() As Boolean Implements IEnumerator.MoveNext
+            hasCurrent_ = e.MoveNext
+            Return hasCurrent_
+        End Function
+
+        Public Sub Reset() Implements IEnumerator.Reset
+            e.Reset()
+        End Sub
+
+        Public Function [Next]() As T Implements IIterator(Of T).Next
+            If Not HasCurrent Then
+                Throw New ArgumentException("Past end of list in Next")
             End If
-            previous = e1.Current
-        Loop
-        Yield last(previous)
+            Dim ret As T = e.Current
+            MoveNext()
+            Return ret
+        End Function
+#Region "IDisposable Support"
+        Private disposedValue As Boolean ' To detect redundant calls
+
+        ' IDisposable
+        Protected Overridable Sub Dispose(disposing As Boolean)
+            If Not Me.disposedValue Then
+                If disposing Then
+                    e.Dispose()
+                End If
+            End If
+            Me.disposedValue = True
+        End Sub
+
+        ' This code added by Visual Basic to correctly implement the disposable pattern.
+        Public Sub Dispose() Implements IDisposable.Dispose
+            ' Do not change this code.  Put cleanup code in Dispose(disposing As Boolean) above.
+            Dispose(True)
+            GC.SuppressFinalize(Me)
+        End Sub
+#End Region
+    End Class
+
+    <Extension>
+    Function GetIterator(Of T)(e As IEnumerable(Of T)) As Iterator(Of T)
+        Return New Iterator(Of T)(e.GetEnumerator)
     End Function
 End Module

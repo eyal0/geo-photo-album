@@ -302,7 +302,7 @@ Class MainForm
                                         End Sub)
                 End If
             Next
-            Dim json_files As Dictionary(Of String, Json) = Nothing
+            Dim json_files As Json = Nothing
             If myJson.ContainsKey("Tags") Then
                 json_files = myJson("Tags")
             End If
@@ -364,10 +364,7 @@ Class MainForm
     End Sub
 
     Private Sub btnSaveJson_Click(sender As System.Object, e As System.EventArgs) Handles btnSaveJson.Click
-        Dim s As New System.Web.Script.Serialization.JavaScriptSerializer
-        Dim sb As New System.Text.StringBuilder
-        s.Serialize(myJson, sb)
-        System.IO.File.WriteAllText(txtTagFile.Text, sb.ToString)
+        System.IO.File.WriteAllLines(txtTagFile.Text, myJson.ToJson)
     End Sub
 
     Function StringToDict(s As String) As Dictionary(Of String, Object)
@@ -396,26 +393,62 @@ Class MainForm
 
     Private Sub btnSaveTags_Click(sender As System.Object, e As System.EventArgs) Handles btnSaveTags.Click
         If Not myJson.ContainsKey("Tags") Then
-            myJson.Add("Tags")
+            myJson.Add("Tags", New Json)
         End If
         Dim json_all_tags As Json
         json_all_tags = myJson("Tags")
         Dim hash As String = SHA1CalcFile(DirectCast(lvFileTags.SelectedItems(0).Tag, String))
-        If Not json_all_tags.ContainsKey(hash) Then
-            json_all_tags.Add(hash, Json.FromString(txtTags.Text))
-        Else
-            json_all_tags(hash) = Json.FromString(txtTags.Text)
-        End If
-        If json_all_tags(hash).Count = 0 Then
+        Dim new_json As Json = Json.FromString(txtTags.Text)
+        If new_json.Count = 0 AndAlso json_all_tags.ContainsKey(hash) Then
             json_all_tags.Remove(hash)
+        ElseIf Not json_all_tags.ContainsKey(hash) Then
+            json_all_tags.Add(hash, new_json)
+        Else
+            json_all_tags(hash) = new_json
+        End If
+        If lvFileTags.SelectedItems.Count > 0 Then
+            Dim new_text As String = String.Join("", new_json.ToString("", "").Skip(1).Select2(Function(s As String)
+                                                                                                   Return s
+                                                                                               End Function,
+                                                                                               Function(s As String)
+                                                                                                   Return ""
+                                                                                               End Function))
+            If lvFileTags.SelectedItems(0).SubItems.Count = 1 Then
+                lvFileTags.SelectedItems(0).SubItems.Add(new_text)
+            End If
+            lvFileTags.SelectedItems(0).SubItems(1).Text = new_text
         End If
     End Sub
 
+    Private Sub CheckJson()
+        txtTags.ForeColor = Color.Black
+        Try
+            If txtTags.Text <> "" Then
+                Json.FromString(txtTags.Text)
+            End If
+            txtTags.ForeColor = Color.Green
+            btnSaveTags.Enabled = (lvFileTags.SelectedItems.Count > 0)
+        Catch ex As Exception
+            txtTags.ForeColor = Color.Red
+            btnSaveTags.Enabled = False
+        End Try
+    End Sub
+
     Private Sub lvFileTags_SelectedIndexChanged(sender As System.Object, e As System.EventArgs) Handles lvFileTags.SelectedIndexChanged
-        If lvFileTags.SelectedItems.Count > 0 AndAlso lvFileTags.SelectedItems(0).SubItems.Count > 1 Then
-            txtTags.Text = lvFileTags.SelectedItems(0).SubItems(1).Text
+        If lvFileTags.SelectedItems.Count > 0 AndAlso System.IO.File.Exists(DirectCast(lvFileTags.SelectedItems(0).Tag, String)) Then
+            If lvFileTags.SelectedItems(0).SubItems.Count > 1 Then
+                txtTags.Text = lvFileTags.SelectedItems(0).SubItems(1).Text
+            Else
+                txtTags.Text = ""
+                btnSaveTags.Enabled = True
+            End If
         Else
             txtTags.Text = ""
+            btnSaveTags.Enabled = False
         End If
+    End Sub
+
+    Private Sub txtTags_TextChanged(sender As Object, e As EventArgs) Handles txtTags.TextChanged
+        CheckJson()
     End Sub
 End Class

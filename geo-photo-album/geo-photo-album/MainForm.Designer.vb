@@ -523,6 +523,7 @@ Partial Class MainForm
         'btnSaveTags
         '
         Me.btnSaveTags.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.btnSaveTags.Enabled = False
         Me.btnSaveTags.Location = New System.Drawing.Point(279, 3)
         Me.btnSaveTags.Name = "btnSaveTags"
         Me.btnSaveTags.Size = New System.Drawing.Size(48, 23)

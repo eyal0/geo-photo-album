@@ -1,4 +1,7 @@
 ﻿Public Class Json
+    Implements IDictionary(Of String, Json)
+    Implements IList(Of Json)
+
     Private json_ As Object
 
     Sub MergeFile(f As String)
@@ -30,144 +33,179 @@
         End If
     End Sub
 
-    Default Property Item(key As Object) As Json
-        Get
-            If (TypeOf key Is String AndAlso
-                TypeOf json_ Is Dictionary(Of String, Json)) Then
-                Dim current_dict As Dictionary(Of String, Json) = DirectCast(json_, Dictionary(Of String, Json))
-                Return current_dict(CStr(key))
-            Else
-                Throw New ApplicationException("Unhandled Item()")
-            End If
-        End Get
-        Set(value As Json)
-            If (TypeOf key Is String AndAlso
-                TypeOf json_ Is Dictionary(Of String, Json)) Then
-                Dim current_dict As Dictionary(Of String, Json) = DirectCast(json_, Dictionary(Of String, Json))
-                current_dict(CStr(key)) = value
-            Else
-                Throw New ApplicationException("Unhandled Item()")
-            End If
-        End Set
-    End Property
-
-    Sub Remove(key As Object)
-        If (TypeOf key Is String AndAlso
-            TypeOf json_ Is Dictionary(Of String, Json)) Then
-            Dim current_dict As Dictionary(Of String, Json) = DirectCast(json_, Dictionary(Of String, Json))
-            current_dict.Remove(CStr(key))
-        End If
-    End Sub
-
     ReadOnly Property IsObject() As Boolean
         Get
             Return TypeOf json_ Is Dictionary(Of String, Json)
         End Get
     End Property
-
     ReadOnly Property IsNothing As Boolean
         Get
             Return json_ Is Nothing
         End Get
     End Property
+    ReadOnly Property IsArray As Boolean
+        Get
+            Return TypeOf json_ Is List(Of Json)
+        End Get
+    End Property
+    ReadOnly Property IsString As Boolean
+        Get
+            Return TypeOf json_ Is String
+        End Get
+    End Property
+    ReadOnly Property IsDouble As Boolean
+        Get
+            Return TypeOf json_ Is Double
+        End Get
+    End Property
+    ReadOnly Property IsBoolean As Boolean
+        Get
+            Return TypeOf json_ Is Boolean
+        End Get
+    End Property
 
-    Function ContainsKey(key As String) As Boolean
-        If json_ Is Nothing Then
-            Return False
-        ElseIf TypeOf json_ Is Dictionary(Of String, Json) Then
-            Dim dict As Dictionary(Of String, Json) = CType(json_, Dictionary(Of String, Json))
-            Return dict.ContainsKey(key)
-        Else
-            Throw New ApplicationException("ContainsKey() on non-dictionary")
-        End If
-    End Function
+    Private ReadOnly Property ToObject As IDictionary(Of String, Json)
+        Get
+            Return CType(json_, Dictionary(Of String, Json))
+        End Get
+    End Property
 
-    Public Shared Widening Operator CType(j As Json) As Dictionary(Of String, Json)
-        If TypeOf j.json_ Is Dictionary(Of String, Json) And j.json_ IsNot Nothing Then
-            Return CType(j.json_, Dictionary(Of String, Json))
-        Else
-            Throw New ApplicationException("Can't cast Json to Dictionary")
-        End If
-    End Operator
-
-    Public Iterator Function Keys() As IEnumerable(Of String)
-        If TypeOf json_ Is Dictionary(Of String, Json) Then
-            Dim d As Dictionary(Of String, Json) = Me
-            For Each key As String In d.Keys
-                Yield key
-            Next
-        Else
-            Throw New ApplicationException("Can't Keys()")
-        End If
-    End Function
-
-    Public Function ToObject() As Object
-        If TypeOf json_ Is Dictionary(Of String, Json) Then
-            Dim ret As New Dictionary(Of String, Object)
-            For Each key As String In Me.Keys
-                ret.Add(key, Me(key).ToObject())
-            Next
-            Return ret
-        ElseIf TypeOf json_ Is String Then
-            Return CStr(json_)
-        Else
-            Throw New ApplicationException("Can't ToObject()")
-        End If
-    End Function
-
-    Public Sub Add(key As String)
-        If json_ Is Nothing Then
-            json_ = New Dictionary(Of String, Json)
-        End If
-        If TypeOf json_ Is Dictionary(Of String, Json) Then
-            Dim d As Dictionary(Of String, Json) = Me
-            d.Add(key, New Json)
-        Else
-            Throw New ApplicationException("Can't Add() to non-Dictionary")
-        End If
-    End Sub
-
-    Public Sub Add(key As String, j As Json)
-        If json_ Is Nothing Then
-            json_ = New Dictionary(Of String, Json)
-        End If
-        If TypeOf json_ Is Dictionary(Of String, Json) Then
-            Dim d As Dictionary(Of String, Json) = Me
-            d.Add(key, j)
-        Else
-            Throw New ApplicationException("Can't Add() to non-Dictionary")
-        End If
-    End Sub
+    Private ReadOnly Property ToArray As IList(Of Json)
+        Get
+            Return CType(json_, List(Of Json))
+        End Get
+    End Property
 
     Public Overloads Iterator Function ToString(Optional prefix As String = "", Optional indent As String = "  ") As IEnumerable(Of String)
-        If TypeOf json_ Is Dictionary(Of String, Json) Then
-            Dim d As Dictionary(Of String, Json) = DirectCast(json_, Dictionary(Of String, Json))
+        If IsObject Then
             Yield prefix + "{"
-            For Each e1 As IEnumerable(Of String) In d.Select(Iterator Function(kvp As KeyValuePair(Of String, Json))
-                                                                  If TypeOf kvp.Value.json_ Is String AndAlso DirectCast(kvp.Value.json_, String) = "" Then
-                                                                      Yield prefix + indent + kvp.Key
-                                                                  Else
-                                                                      Yield prefix + indent + kvp.Key + ":"
-                                                                      For Each s As String In kvp.Value _
-                                                                                              .ToString(prefix + indent, indent)
-                                                                          Yield s
-                                                                      Next
-                                                                  End If
-                                                              End Function)
-                For Each s As String In e1.Select2(Function(s1 As String)
-                                                       Return s1
-                                                   End Function,
-                                                   Function(s1 As String)
-                                                       Return s1 + ","
-                                                   End Function)
+
+            For Each e1 As IEnumerable(Of String) In ToObject.Select2(Iterator Function(kvp As KeyValuePair(Of String, Json))
+                                                                          If kvp.Value Is Nothing OrElse kvp.Value.IsNothing Then
+                                                                              Yield prefix + indent + kvp.Key + ","
+                                                                          Else
+                                                                              Yield prefix + indent + kvp.Key + ":"
+                                                                              For Each s As String In kvp.Value.ToString(prefix + indent, indent).Select2(Function(s1 As String)
+                                                                                                                                                              Return s1
+                                                                                                                                                          End Function,
+                                                                                                                                                          Function(s1 As String)
+                                                                                                                                                              Return s1 + ","
+                                                                                                                                                          End Function)
+                                                                                  Yield s
+                                                                              Next
+                                                                          End If
+                                                                      End Function,
+                                                                      Iterator Function(kvp As KeyValuePair(Of String, Json))
+                                                                          If kvp.Value Is Nothing OrElse kvp.Value.IsNothing Then
+                                                                              Yield prefix + indent + kvp.Key
+                                                                          Else
+                                                                              Yield prefix + indent + kvp.Key + ":"
+                                                                              For Each s As String In kvp.Value.ToString(prefix + indent, indent)
+                                                                                  Yield s
+                                                                              Next
+                                                                          End If
+                                                                      End Function)
+                For Each s As String In e1
                     Yield s
                 Next
             Next
             Yield prefix + "}"
-        ElseIf TypeOf json_ Is String Then
+        ElseIf IsArray Then
+            Yield prefix + "["
+            For Each e1 As IEnumerable(Of String) In ToArray.Select2(Iterator Function(j As Json)
+                                                                         For Each s As String In j.ToString(prefix + indent, indent).Select2(Function(s1 As String)
+                                                                                                                                                 Return s1
+                                                                                                                                             End Function,
+                                                                                                                                             Function(s1 As String)
+                                                                                                                                                 Return s1 + ","
+                                                                                                                                             End Function)
+                                                                             Yield s
+                                                                         Next
+                                                                     End Function,
+                                                                     Iterator Function(j As Json)
+                                                                         For Each s As String In j.ToString(prefix + indent, indent)
+                                                                             Yield s
+                                                                         Next
+                                                                     End Function)
+                For Each s As String In e1
+                    Yield s
+                Next
+            Next
+            Yield prefix + "]"
+        ElseIf IsString OrElse IsDouble Then
             Yield prefix + CStr(json_)
+        ElseIf IsBoolean Then
+            Yield prefix + CStr(json_.ToString.ToLower)
+        ElseIf IsNothing Then
+            Yield prefix + "null"
         Else
             Throw New ApplicationException("Can't ToString()")
+        End If
+    End Function
+
+    Public Iterator Function ToJson(Optional prefix As String = "", Optional indent As String = "  ") As IEnumerable(Of String)
+        If IsObject Then
+            Yield prefix + "{"
+            For Each e1 As IEnumerable(Of String) In ToObject.Select2(Iterator Function(kvp As KeyValuePair(Of String, Json))
+                                                                          Yield prefix + indent + """" + kvp.Key + """ :"
+                                                                          If kvp.Value Is Nothing Then
+                                                                              Yield prefix + indent + indent + "null"
+                                                                          Else
+                                                                              For Each s As String In kvp.Value.ToJson(prefix + indent + indent, indent).Select2(Function(s1 As String)
+                                                                                                                                                                     Return s1
+                                                                                                                                                                 End Function,
+                                                                                                                                                                 Function(s1 As String)
+                                                                                                                                                                     Return s1 + ","
+                                                                                                                                                                 End Function)
+                                                                                  Yield s
+                                                                              Next
+                                                                          End If
+                                                                      End Function,
+                                                                      Iterator Function(kvp As KeyValuePair(Of String, Json))
+                                                                          Yield prefix + indent + """" + kvp.Key + """ :"
+                                                                          If kvp.Value Is Nothing Then
+                                                                              Yield prefix + indent + indent + "null"
+                                                                          Else
+                                                                              For Each s As String In kvp.Value.ToJson(prefix + indent + indent, indent)
+                                                                                  Yield s
+                                                                              Next
+                                                                          End If
+                                                                      End Function)
+                For Each s As String In e1
+                    Yield s
+                Next
+            Next
+            Yield prefix + "}"
+        ElseIf IsArray Then
+            Yield prefix + "["
+            For Each e1 As IEnumerable(Of String) In ToArray.Select2(Iterator Function(j As Json)
+                                                                         For Each s As String In j.ToJson(prefix + indent, indent).Select2(Function(s1 As String)
+                                                                                                                                               Return s1
+                                                                                                                                           End Function,
+                                                                                                                                           Function(s1 As String)
+                                                                                                                                               Return s1 + ","
+                                                                                                                                           End Function)
+                                                                             Yield s
+                                                                         Next
+                                                                     End Function,
+                                                                     Iterator Function(j As Json)
+                                                                         For Each s As String In j.ToJson(prefix + indent, indent)
+                                                                             Yield s
+                                                                         Next
+                                                                     End Function)
+                For Each s As String In e1
+                    Yield s
+                Next
+            Next
+            Yield prefix + "]"
+        ElseIf IsString OrElse IsDouble Then
+            Yield prefix + """" + CStr(json_) + """"
+        ElseIf IsBoolean Then
+            Yield prefix + CStr(json_.ToString.ToLower)
+        ElseIf IsNothing Then
+            Yield prefix + "null"
+        Else
+            Throw New ApplicationException("Can't ToJson()")
         End If
     End Function
 
@@ -178,7 +216,7 @@
         Return ret
     End Function
 
-    Private Shared Function ParseValue(e1 As IEnumerator(Of String)) As Json
+    Private Shared Function ParseValue(e1 As IIterator(Of String)) As Json
         If e1.Current.StartsWith(""""c) Then
             Dim ret As New Json
             ret.json_ = ParseString(e1)
@@ -214,53 +252,51 @@
         End If
     End Function
 
-    Private Shared Function ParseArray(e1 As IEnumerator(Of String)) As Json
-        If Not e1.Current = "[" Then
+    Private Shared Function ParseArray(e1 As IIterator(Of String)) As Json
+        If e1.Current = "[" Then
             e1.MoveNext() 'generous parser
         End If
         Dim ret As New Json
         ret.json_ = New List(Of Json)
-        Do While Not e1.Current = "]" OrElse e1.Current = Nothing ' generous
+        Do Until Not e1.HasCurrent OrElse e1.Current = "]" ' generous
             Dim value As Json = ParseValue(e1)
-            If e1.Current <> "," AndAlso e1.Current <> "]" AndAlso e1.Current <> Nothing Then
+            ret.Add(value)
+            If e1.HasCurrent AndAlso e1.Current <> "," AndAlso e1.Current <> "]" Then
                 Throw New ApplicationException("Expected another value or end of array")
             End If
-            Do While e1.Current = ","
+            Do While e1.HasCurrent AndAlso e1.Current = ","
                 e1.MoveNext()
             Loop
         Loop
-        If e1.Current = "]" Then e1.MoveNext()
+        If e1.HasCurrent AndAlso e1.Current = "]" Then e1.MoveNext()
         Return ret
     End Function
 
-    Private Shared Function ParseObject(e1 As IEnumerator(Of String)) As Json
+    Private Shared Function ParseObject(e1 As IIterator(Of String)) As Json
         If e1.Current = "{" Then
             e1.MoveNext() 'generous parser
         End If
         Dim ret As New Json
         ret.json_ = New Dictionary(Of String, Json)
-        Do Until e1.Current = "}" OrElse e1.Current = Nothing 'generous
+        Do Until Not e1.HasCurrent OrElse e1.Current = "}" 'generous
             Dim key As String = ParseString(e1)
-            If e1.Current = "," Then
-                e1.MoveNext()
+            If Not e1.HasCurrent OrElse e1.Current = "," OrElse e1.Current = "}" Then
                 ret.Add(key, Nothing)
-            Else
-                If Not e1.Current = ":" Then
-                    Throw New ApplicationException("Expected ':'")
-                Else
-                    e1.MoveNext()
-                    Dim value As Json = ParseValue(e1)
-                    ret.Add(key, value)
-                End If
+            ElseIf Not e1.Current = ":" Then
+                Throw New ApplicationException("Expected ':'")
+            Else 'must be a :
+                e1.MoveNext()
+                Dim value As Json = ParseValue(e1)
+                ret.Add(key, value)
             End If
-            If e1.Current <> "," AndAlso e1.Current <> "}" Then
+            If e1.HasCurrent AndAlso e1.Current <> "," AndAlso e1.Current <> "}" Then
                 Throw New ApplicationException("Expected another pair or end of Object")
             End If
-            Do While e1.Current = ","
+            Do While e1.HasCurrent AndAlso e1.Current = ","
                 e1.MoveNext() 'generous parser
             Loop
         Loop
-        If e1.Current = "}" Then e1.MoveNext()
+        If e1.HasCurrent AndAlso e1.Current = "}" Then e1.MoveNext()
         Return ret
     End Function
 
@@ -273,7 +309,7 @@
     End Function
 
     Private Shared Function FromJson(elements As IEnumerable(Of String)) As Json
-        Dim e1 As IEnumerator(Of String) = elements.GetEnumerator
+        Dim e1 As Iterator(Of String) = elements.GetIterator
         e1.MoveNext()
         Return ParseObject(e1)
     End Function
@@ -296,98 +332,184 @@
     End Function
 
     Private Shared Iterator Function TokenizeStream(charStream As IEnumerable(Of Char)) As IEnumerable(Of String)
-        Dim e1 As IEnumerator(Of Char) = charStream.GetEnumerator
-        Do While e1.MoveNext
+        Dim e1 As IIterator(Of Char) = charStream.GetIterator
+        e1.MoveNext()
+        Do While e1.HasCurrent
             If "{}[],:".Contains(e1.Current) Then
-                Yield e1.Current
+                Yield e1.Next
             ElseIf e1.Current = """"c Then
-                Dim ret As String = e1.Current
-                e1.MoveNext()
+                Dim ret As String = e1.next
                 Do Until e1.Current = """"c
                     If e1.Current <> "\"c Then
-                        ret += e1.Current
-                        e1.MoveNext()
+                        ret += e1.Next
                     Else
-                        ret += e1.Current
-                        e1.MoveNext()
+                        ret += e1.Next()
                         If e1.Current <> "u"c Then
-                            ret += e1.Current
-                            e1.MoveNext()
+                            ret += e1.Next()
                         Else
                             For i As Integer = 1 To 4
-                                ret += e1.Current
-                                e1.MoveNext()
+                                ret += e1.Next()
                             Next
                         End If
                     End If
                 Loop
-                ret += e1.Current
+                ret += e1.Next
                 Yield ret
             ElseIf "+-0123456789".Contains(e1.Current) Then
-                Dim ret As String = e1.Current
-                e1.MoveNext()
-                Do While "0123456789.eE+-".Contains(e1.Current)
-                    ret += e1.Current
-                    e1.MoveNext()
+                Dim ret As String = e1.Next()
+                Do While e1.HasCurrent AndAlso "0123456789.eE+-".Contains(e1.Current)
+                    ret += e1.Next()
                 Loop
                 Yield ret
             ElseIf Char.IsWhiteSpace(e1.Current) Then
+                e1.MoveNext()
                 'yield nothing
             Else 'generous strings
                 Dim ret As String = ""
-                Dim moveSuccess As Boolean = True
-                Do Until moveSuccess = False OrElse "{}[],:".Contains(e1.Current) OrElse Char.IsWhiteSpace(e1.Current)
-                    ret += e1.Current
-                    moveSuccess = e1.MoveNext
+                Do Until e1.HasCurrent = False OrElse "{}[],:".Contains(e1.Current) OrElse Char.IsWhiteSpace(e1.Current)
+                    ret += e1.Next()
                 Loop
                 Yield ret
-
-                If moveSuccess AndAlso "{}[],:".Contains(e1.Current) Then 'have to catch this before the movenext
-                    Yield e1.Current
-                ElseIf moveSuccess AndAlso Char.IsWhiteSpace(e1.Current) Then
-                    'yield nothing
-                Else
-                    Return
-                End If
             End If
         Loop
     End Function
 #End Region
+    Public Sub Add(item As KeyValuePair(Of String, Json)) Implements ICollection(Of KeyValuePair(Of String, Json)).Add
+        If IsNothing Then json_ = New Dictionary(Of String, Json)
+        ToObject.Add(item)
+    End Sub
 
-    Public Iterator Function ToJson(Optional prefix As String = "", Optional indent As String = "  ") As IEnumerable(Of String)
-        If TypeOf json_ Is Dictionary(Of String, Json) Then
-            Dim d As Dictionary(Of String, Json) = DirectCast(json_, Dictionary(Of String, Json))
-            Yield prefix + "{"
-            For Each e1 As IEnumerable(Of String) In d.Select(Iterator Function(kvp As KeyValuePair(Of String, Json))
-                                                                  Yield prefix + indent + """" + kvp.Key + """:"
-                                                                  For Each s As String In kvp.Value _
-                                                                                          .ToJson(prefix + indent, indent)
-                                                                      Yield s
-                                                                  Next
-                                                              End Function)
-                For Each s As String In e1.Select2(Function(s1 As String)
-                                                       Return s1
-                                                   End Function,
-                                                   Function(s1 As String)
-                                                       Return s1 + ","
-                                                   End Function)
-                    Yield s
-                Next
-            Next
-            Yield prefix + "}"
-        ElseIf TypeOf json_ Is String Then
-            Yield prefix + """" + CStr(json_) + """"
+    Public Sub Clear() Implements ICollection(Of KeyValuePair(Of String, Json)).Clear, ICollection(Of Json).Clear
+        If Not IsNothing Then ToObject.Clear()
+    End Sub
+
+    Public Function Contains(item As KeyValuePair(Of String, Json)) As Boolean Implements ICollection(Of KeyValuePair(Of String, Json)).Contains
+        If IsNothing Then Return False Else Return ToObject.Contains(item)
+    End Function
+
+    Public Sub CopyTo(array() As KeyValuePair(Of String, Json), arrayIndex As Integer) Implements ICollection(Of KeyValuePair(Of String, Json)).CopyTo
+        If Not IsNothing Then ToObject.CopyTo(array, arrayIndex)
+    End Sub
+
+    Public ReadOnly Property Count As Integer Implements ICollection(Of KeyValuePair(Of String, Json)).Count, ICollection(Of Json).Count
+        Get
+            If IsNothing Then Return 0 Else If IsObject Then Return ToObject.Count Else Return ToArray.Count
+        End Get
+    End Property
+
+    Public ReadOnly Property IsReadOnly As Boolean Implements ICollection(Of KeyValuePair(Of String, Json)).IsReadOnly, ICollection(Of Json).IsReadOnly
+        Get
+            If IsNothing Then
+                Return False
+            ElseIf IsObject Then
+                Return ToObject.IsReadOnly
+            ElseIf IsArray Then
+                Return ToArray.IsReadOnly
+            Else
+                Throw New ArgumentException("Can't IsReadOnly")
+            End If
+        End Get
+    End Property
+
+    Public Function Remove(item As KeyValuePair(Of String, Json)) As Boolean Implements ICollection(Of KeyValuePair(Of String, Json)).Remove
+        If IsNothing Then Return False Else Return ToObject.Remove(item)
+    End Function
+
+    Public Sub Add(key As String, value As Json) Implements IDictionary(Of String, Json).Add
+        If IsNothing Then json_ = New Dictionary(Of String, Json)
+        ToObject.Add(key, value)
+    End Sub
+
+    Public Function ContainsKey(key As String) As Boolean Implements IDictionary(Of String, Json).ContainsKey
+        If IsNothing Then Return False Else Return ToObject.ContainsKey(key)
+    End Function
+
+    Default Public Overloads Property Item(key As String) As Json Implements IDictionary(Of String, Json).Item
+        Get
+            If IsNothing Then Throw New KeyNotFoundException() Else Return ToObject.Item(key)
+        End Get
+        Set(value As Json)
+            If IsNothing Then json_ = New Dictionary(Of String, Json)
+            ToObject.Item(key) = value
+        End Set
+    End Property
+
+    Public ReadOnly Property Keys As ICollection(Of String) Implements IDictionary(Of String, Json).Keys
+        Get
+            If IsNothing Then Return New List(Of String) Else Return ToObject.Keys
+        End Get
+    End Property
+
+    Public Function Remove(key As String) As Boolean Implements IDictionary(Of String, Json).Remove
+        If IsNothing Then Return False Else Return ToObject.Remove(key)
+    End Function
+
+    Public Function TryGetValue(key As String, ByRef value As Json) As Boolean Implements IDictionary(Of String, Json).TryGetValue
+        If IsNothing Then Return False Else Return ToObject.TryGetValue(key, value)
+    End Function
+
+    Public ReadOnly Property Values As ICollection(Of Json) Implements IDictionary(Of String, Json).Values
+        Get
+            If IsNothing Then Return New List(Of Json) Else Return ToObject.Values
+        End Get
+    End Property
+
+    Public Function GetObjectEnumerator() As IEnumerator(Of KeyValuePair(Of String, Json)) Implements IEnumerable(Of KeyValuePair(Of String, Json)).GetEnumerator
+        If IsNothing Then Return New List(Of KeyValuePair(Of String, Json)).Enumerator Else Return ToObject.GetEnumerator
+    End Function
+
+    Public Function GetEnumerator() As IEnumerator Implements IEnumerable.GetEnumerator
+        If IsNothing Then
+            Return New List(Of Object).Enumerator
+        ElseIf IsObject Then
+            Return ToObject.GetEnumerator
+        ElseIf IsArray Then
+            Return ToObject.GetEnumerator
         Else
-            Throw New ApplicationException("Can't ToJson()")
+            Throw New ArgumentException("Can't get enumerator")
         End If
     End Function
 
-    Public Function Count() As Integer
-        If TypeOf json_ Is Dictionary(Of String, Json) Then
-            Dim d As Dictionary(Of String, Json) = Me
-            Return d.Count
-        Else
-            Throw New ApplicationException("Can't Count()")
-        End If
+    Public Sub Add(item As Json) Implements ICollection(Of Json).Add
+        If IsNothing Then json_ = New List(Of Json)
+        ToArray.Add(item)
+    End Sub
+
+    Public Function Contains(item As Json) As Boolean Implements ICollection(Of Json).Contains
+        If IsNothing Then Return False Else Return ToArray.Contains(item)
     End Function
+
+    Public Sub CopyTo(array() As Json, arrayIndex As Integer) Implements ICollection(Of Json).CopyTo
+        If IsNothing Then Return Else ToArray.CopyTo(array, arrayIndex)
+    End Sub
+
+    Public Function Remove(item As Json) As Boolean Implements ICollection(Of Json).Remove
+        If IsNothing Then Return False Else Return ToArray.Remove(item)
+    End Function
+
+    Public Function GetArrayEnumerator() As IEnumerator(Of Json) Implements IEnumerable(Of Json).GetEnumerator
+        If IsNothing Then Return New List(Of Json).Enumerator Else Return ToArray.GetEnumerator
+    End Function
+
+    Public Function IndexOf(item As Json) As Integer Implements IList(Of Json).IndexOf
+        If IsNothing Then Return -1 Else Return ToArray.IndexOf(item)
+    End Function
+
+    Public Sub Insert(index As Integer, item As Json) Implements IList(Of Json).Insert
+        If IsNothing Then json_ = New List(Of Json)
+        ToArray.Insert(index, item)
+    End Sub
+
+    Default Public Overloads Property Item(index As Integer) As Json Implements IList(Of Json).Item
+        Get
+            Return ToArray.Item(index)
+        End Get
+        Set(value As Json)
+            If IsNothing Then Throw New ArgumentOutOfRangeException() Else ToArray.Item(index) = value
+        End Set
+    End Property
+
+    Public Sub RemoveAt(index As Integer) Implements IList(Of Json).RemoveAt
+        If IsNothing Then Throw New ArgumentOutOfRangeException() Else ToArray.RemoveAt(index)
+    End Sub
 End Class
