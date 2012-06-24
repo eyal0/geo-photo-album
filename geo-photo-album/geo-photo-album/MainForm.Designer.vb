@@ -62,7 +62,7 @@ Partial Class MainForm
         Me.SplitContainer5 = New System.Windows.Forms.SplitContainer()
         Me.picPreview = New System.Windows.Forms.PictureBox()
         Me.wmpPreview = New AxWMPLib.AxWindowsMediaPlayer()
-        Me.flowTags = New System.Windows.Forms.FlowLayoutPanel()
+        Me.lstTags = New System.Windows.Forms.ListBox()
         Me.btnSaveTags = New System.Windows.Forms.Button()
         Me.txtTags = New System.Windows.Forms.TextBox()
         Me.lvFileTagsWorker = New System.ComponentModel.BackgroundWorker()
@@ -488,7 +488,7 @@ Partial Class MainForm
         '
         'SplitContainer5.Panel2
         '
-        Me.SplitContainer5.Panel2.Controls.Add(Me.flowTags)
+        Me.SplitContainer5.Panel2.Controls.Add(Me.lstTags)
         Me.SplitContainer5.Panel2.Controls.Add(Me.btnSaveTags)
         Me.SplitContainer5.Panel2.Controls.Add(Me.txtTags)
         Me.SplitContainer5.Size = New System.Drawing.Size(332, 376)
@@ -513,12 +513,17 @@ Partial Class MainForm
         Me.wmpPreview.Size = New System.Drawing.Size(163, 79)
         Me.wmpPreview.TabIndex = 0
         '
-        'flowTags
+        'lstTags
         '
-        Me.flowTags.Location = New System.Drawing.Point(3, 32)
-        Me.flowTags.Name = "flowTags"
-        Me.flowTags.Size = New System.Drawing.Size(326, 168)
-        Me.flowTags.TabIndex = 2
+        Me.lstTags.Anchor = CType(((System.Windows.Forms.AnchorStyles.Bottom Or System.Windows.Forms.AnchorStyles.Left) _
+            Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.lstTags.FormattingEnabled = True
+        Me.lstTags.IntegralHeight = False
+        Me.lstTags.Location = New System.Drawing.Point(3, 32)
+        Me.lstTags.Name = "lstTags"
+        Me.lstTags.SelectionMode = System.Windows.Forms.SelectionMode.MultiSimple
+        Me.lstTags.Size = New System.Drawing.Size(324, 166)
+        Me.lstTags.TabIndex = 2
         '
         'btnSaveTags
         '
@@ -623,6 +628,6 @@ Partial Class MainForm
     Friend WithEvents ImageList1 As System.Windows.Forms.ImageList
     Friend WithEvents lvFileTagsWorker As System.ComponentModel.BackgroundWorker
     Friend WithEvents btnSaveJson As System.Windows.Forms.Button
-    Friend WithEvents flowTags As System.Windows.Forms.FlowLayoutPanel
+    Friend WithEvents lstTags As System.Windows.Forms.ListBox
 
 End Class

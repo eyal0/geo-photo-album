@@ -436,12 +436,43 @@ Class MainForm
 
     Private Sub lvFileTags_SelectedIndexChanged(sender As System.Object, e As System.EventArgs) Handles lvFileTags.SelectedIndexChanged
         If lvFileTags.SelectedItems.Count > 0 AndAlso System.IO.File.Exists(DirectCast(lvFileTags.SelectedItems(0).Tag, String)) Then
+            Dim filename As String = DirectCast(lvFileTags.SelectedItems(0).Tag, String)
             If lvFileTags.SelectedItems(0).SubItems.Count > 1 Then
                 txtTags.Text = lvFileTags.SelectedItems(0).SubItems(1).Text
             Else
                 txtTags.Text = ""
                 btnSaveTags.Enabled = True
             End If
+            lstTags.Items.Clear()
+            Try
+                Dim er As New ExifLib.ExifReader(filename)
+                Dim dt As DateTime
+                If er.GetTagValue(ExifLib.ExifTags.DateTimeOriginal, dt) Then
+                    lstTags.Items.Add("DateTime: """ + dt.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffff", Globalization.CultureInfo.InvariantCulture) + """")
+                ElseIf er.GetTagValue(ExifLib.ExifTags.DateTimeDigitized, dt) Then
+                    lstTags.Items.Add("DateTime: """ + dt.ToString("""yyyy-MM-ddTHH\:mm\:ss.fffffff", Globalization.CultureInfo.InvariantCulture) + """")
+                ElseIf er.GetTagValue(ExifLib.ExifTags.DateTime, dt) Then
+                    lstTags.Items.Add("DateTime: """ + dt.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffff", Globalization.CultureInfo.InvariantCulture) + """")
+                End If
+                Dim orient As UInt16
+                If er.GetTagValue(ExifLib.ExifTags.Orientation, orient) Then
+                    lstTags.Items.Add("Orientation: " + orient.ToString)
+                End If
+            Catch ex As Exception
+                Dim dt As DateTime
+                dt = System.IO.File.GetCreationTime(filename)
+                lstTags.Items.Add("DateTime: """ + dt.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffff", Globalization.CultureInfo.InvariantCulture) + """")
+            End Try
+            Dim j As Json = Json.FromString(txtTags.Text)
+            For item_index As Integer = 0 To lstTags.Items.Count - 1
+                Dim item_string As String = CStr(lstTags.Items(item_index))
+                Dim j2 As Json = Json.FromString(item_string)
+                If j.ContainsKey(j2.Keys(0)) AndAlso j(j2.Keys(0)) = j2(j2.Keys(0)) Then
+                    lstTags.SetSelected(item_index, True)
+                Else
+                    lstTags.SetSelected(item_index, False)
+                End If
+            Next
         Else
             txtTags.Text = ""
             btnSaveTags.Enabled = False
@@ -450,5 +481,31 @@ Class MainForm
 
     Private Sub txtTags_TextChanged(sender As Object, e As EventArgs) Handles txtTags.TextChanged
         CheckJson()
+    End Sub
+
+    Private Sub lstTags_SelectedIndexChanged(sender As Object, e As EventArgs) Handles lstTags.SelectedIndexChanged
+        Dim j As Json = Json.FromString(txtTags.Text)
+        For item_index As Integer = 0 To lstTags.Items.Count - 1
+            Dim item_string As String = CStr(lstTags.Items(item_index))
+            Dim j2 As Json = Json.FromString(item_string)
+            If lstTags.SelectedIndices.Contains(item_index) Then
+                If Not j.ContainsKey(j2.Keys(0)) Then
+                    j.Add(j2.Keys(0), j2(j2.Keys(0)))
+                Else
+                    j(j2.Keys(0)) = j2(j2.Keys(0))
+                End If
+            Else 'not selected
+                If j.ContainsKey(j2.Keys(0)) AndAlso j(j2.Keys(0)) = j2(j2.Keys(0)) Then
+                    j.Remove(j2.Keys(0))
+                End If
+            End If
+        Next
+        Dim new_text As String = String.Join("", j.ToString("", "").Skip(1).Select2(Function(s As String)
+                                                                                        Return s
+                                                                                    End Function,
+                                                                                    Function(s As String)
+                                                                                        Return ""
+                                                                                    End Function))
+        txtTags.Text = new_text
     End Sub
 End Class

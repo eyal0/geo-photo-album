@@ -132,8 +132,14 @@
                 Next
             Next
             Yield prefix + "]"
-        ElseIf IsString OrElse IsDouble Then
+        ElseIf IsDouble Then
             Yield prefix + CStr(json_)
+        ElseIf IsString Then
+            If CStr(json_).All(Function(c As Char) Char.IsLetter(c)) Then
+                Yield prefix + CStr(json_)
+            Else
+                Yield prefix + """" + CStr(json_) + """"
+            End If
         ElseIf IsBoolean Then
             Yield prefix + CStr(json_.ToString.ToLower)
         ElseIf IsNothing Then
@@ -374,6 +380,30 @@
         Loop
     End Function
 #End Region
+
+    Shared Operator =(a As Json, b As Json) As Boolean
+        Dim e1 As IEnumerable(Of String) = a.ToJson
+        Dim e2 As IEnumerable(Of String) = b.ToJson
+        Dim i1 As IIterator(Of String) = e1.GetIterator
+        Dim i2 As IIterator(Of String) = e2.GetIterator
+        i1.MoveNext()
+        i2.MoveNext()
+        Do While i1.HasCurrent AndAlso i2.HasCurrent
+            If i1.Next <> i2.Next Then
+                Return False
+            End If
+        Loop
+        If i1.HasCurrent = False AndAlso i2.HasCurrent = False Then 'both at the end
+            Return True
+        Else
+            Return False
+        End If
+    End Operator
+
+    Shared Operator <>(a As Json, b As Json) As Boolean
+        Return Not a = b
+    End Operator
+
     Public Sub Add(item As KeyValuePair(Of String, Json)) Implements ICollection(Of KeyValuePair(Of String, Json)).Add
         If IsNothing Then json_ = New Dictionary(Of String, Json)
         ToObject.Add(item)
