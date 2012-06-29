@@ -1,8 +1,25 @@
-﻿Public Class Json
+﻿
+Public Class Json
     Implements IDictionary(Of String, Json)
     Implements IList(Of Json)
 
     Private json_ As Object
+
+    Sub New()
+        json_ = Nothing
+    End Sub
+
+    Sub New(s As String)
+        json_ = s
+    End Sub
+
+    Sub New(d As Double)
+        json_ = d
+    End Sub
+
+    Sub New(b As Boolean)
+        json_ = b
+    End Sub
 
     Sub MergeFile(f As String)
         Dim new_json As Json = FromFile(f)
@@ -12,19 +29,15 @@
     Private Sub MergeJson(new_json As Json)
         If json_ Is Nothing Then
             json_ = new_json.json_
-        ElseIf (TypeOf json_ Is Dictionary(Of String, Json) AndAlso
-                TypeOf new_json.json_ Is Dictionary(Of String, Json)) Then
-            Dim current_dict As Dictionary(Of String, Json) = DirectCast(json_, Dictionary(Of String, Json))
-            Dim new_dict As Dictionary(Of String, Json) = DirectCast(new_json.json_, Dictionary(Of String, Json))
-            For Each kvp As KeyValuePair(Of String, Json) In new_dict
-                If Not current_dict.ContainsKey(kvp.Key) Then
-                    current_dict.Add(kvp.Key, kvp.Value)
+        ElseIf IsObject AndAlso new_json.IsObject Then
+            For Each kvp As KeyValuePair(Of String, Json) In new_json.ToObject
+                If Not ToObject.ContainsKey(kvp.Key) Then
+                    ToObject.Add(kvp.Key, kvp.Value)
                 Else
-                    current_dict(kvp.Key).MergeJson(kvp.Value) 'need to merge the inner objects
+                    ToObject(kvp.Key).MergeJson(kvp.Value) 'need to merge the inner objects
                 End If
             Next
-        ElseIf (TypeOf json_ Is String AndAlso
-                TypeOf new_json.json_ Is String) Then
+        ElseIf IsString AndAlso new_json.IsString Then
             If CStr(json_) <> CStr(new_json.json_) Then
                 Throw New ApplicationException("Can't merge dissimilar strings")
             End If
@@ -75,6 +88,31 @@
             Return CType(json_, List(Of Json))
         End Get
     End Property
+
+    Private ReadOnly Property ToBoolean As Boolean
+        Get
+            Return CType(json_, Boolean)
+        End Get
+    End Property
+
+    Private ReadOnly Property ToDouble As Double
+        Get
+            Return CType(json_, Double)
+        End Get
+    End Property
+
+    Public Overrides Function ToString() As String
+        If IsArray Or IsObject Then
+            Return String.Join("", ToString("", "").Skip(1).Select2(Function(s As String)
+                                                                        Return s
+                                                                    End Function,
+                                                                        Function(s As String)
+                                                                        Return ""
+                                                                    End Function))
+        Else
+            Return CStr(json_)
+        End If
+    End Function
 
     Public Overloads Iterator Function ToString(Optional prefix As String = "", Optional indent As String = "  ") As IEnumerable(Of String)
         If IsObject Then
@@ -135,10 +173,18 @@
         ElseIf IsDouble Then
             Yield prefix + CStr(json_)
         ElseIf IsString Then
-            If CStr(json_).All(Function(c As Char) Char.IsLetter(c)) Then
+            If CStr(json_).All(Function(c As Char) "{}[],:".Contains(c) OrElse Char.IsWhiteSpace(c)) Then
                 Yield prefix + CStr(json_)
             Else
-                Yield prefix + """" + CStr(json_) + """"
+                Yield prefix + """" + String.Join("", CStr(json_).Replace("\", "\\").Replace(vbNewLine, "\n").Replace(vbCr, "\r") _
+                                                             .Replace(vbFormFeed, "\f").Replace(vbTab, "\t") _
+                                                             .Select(Function(c As Char)
+                                                                         If AscW(c) > &HFF Then
+                                                                             Return "\u" + AscW(c).ToString("04x")
+                                                                         Else
+                                                                             Return c
+                                                                         End If
+                                                                     End Function)) + """"
             End If
         ElseIf IsBoolean Then
             Yield prefix + CStr(json_.ToString.ToLower)
@@ -204,8 +250,18 @@
                 Next
             Next
             Yield prefix + "]"
-        ElseIf IsString OrElse IsDouble Then
-            Yield prefix + """" + CStr(json_) + """"
+        ElseIf IsString Then
+            Yield prefix + """" + String.Join("", CStr(json_).Replace("\", "\\").Replace(vbNewLine, "\n").Replace(vbCr, "\r") _
+                                                             .Replace(vbFormFeed, "\f").Replace(vbTab, "\t") _
+                                                             .Select(Function(c As Char)
+                                                                         If AscW(c) > &HFF Then
+                                                                             Return "\u" + AscW(c).ToString("04x")
+                                                                         Else
+                                                                             Return c
+                                                                         End If
+                                                                     End Function)) + """"
+        ElseIf IsDouble Then
+            Yield prefix + CStr(json_)
         ElseIf IsBoolean Then
             Yield prefix + CStr(json_.ToString.ToLower)
         ElseIf IsNothing Then
@@ -287,7 +343,7 @@
         Do Until Not e1.HasCurrent OrElse e1.Current = "}" 'generous
             Dim key As String = ParseString(e1)
             If Not e1.HasCurrent OrElse e1.Current = "," OrElse e1.Current = "}" Then
-                ret.Add(key, Nothing)
+                ret.Add(key, New Json)
             ElseIf Not e1.Current = ":" Then
                 Throw New ApplicationException("Expected ':'")
             Else 'must be a :
@@ -334,7 +390,8 @@
     Public Shared Function FromFile(filename As String) As Json
         Dim f As System.IO.StreamReader = System.IO.File.OpenText(filename)
         Dim e As IEnumerable(Of String) = TokenizeStream(TextIterator(f))
-        Return FromJson(e)
+        FromFile = FromJson(e)
+        f.Close()
     End Function
 
     Private Shared Iterator Function TokenizeStream(charStream As IEnumerable(Of Char)) As IEnumerable(Of String)
@@ -344,33 +401,45 @@
             If "{}[],:".Contains(e1.Current) Then
                 Yield e1.Next
             ElseIf e1.Current = """"c Then
-                Dim ret As String = e1.next
+                Dim ret As String = e1.Next
                 Do Until e1.Current = """"c
                     If e1.Current <> "\"c Then
                         ret += e1.Next
                     Else
-                        ret += e1.Next()
-                        If e1.Current <> "u"c Then
-                            ret += e1.Next()
-                        Else
-                            For i As Integer = 1 To 4
-                                ret += e1.Next()
-                            Next
-                        End If
+                        e1.MoveNext()
+                        Select Case e1.Current
+                            Case """"c, "\"c, "/"c
+                                ret += e1.Next
+                            Case "b"c
+                                e1.MoveNext()
+                                ret += vbBack
+                            Case "f"c
+                                e1.MoveNext()
+                                ret += vbFormFeed
+                            Case "n"c
+                                e1.MoveNext()
+                                ret += vbNewLine
+                            Case "r"c
+                                e1.MoveNext()
+                                ret += vbCr
+                            Case "t"c
+                                e1.MoveNext()
+                                ret += vbTab
+                            Case "u"c
+                                e1.MoveNext()
+                                Dim i As Integer = Integer.Parse(e1.Next + e1.Next + e1.Next + e1.Next, Globalization.NumberStyles.HexNumber)
+                                ret += ChrW(i)
+                            Case Else
+                                Throw New ArgumentException("Can't parse special character in string")
+                        End Select
                     End If
                 Loop
                 ret += e1.Next
                 Yield ret
-            ElseIf "+-0123456789".Contains(e1.Current) Then
-                Dim ret As String = e1.Next()
-                Do While e1.HasCurrent AndAlso "0123456789.eE+-".Contains(e1.Current)
-                    ret += e1.Next()
-                Loop
-                Yield ret
             ElseIf Char.IsWhiteSpace(e1.Current) Then
                 e1.MoveNext()
                 'yield nothing
-            Else 'generous strings
+            Else 'get a bunch of characters
                 Dim ret As String = ""
                 Do Until e1.HasCurrent = False OrElse "{}[],:".Contains(e1.Current) OrElse Char.IsWhiteSpace(e1.Current)
                     ret += e1.Next()
@@ -382,21 +451,30 @@
 #End Region
 
     Shared Operator =(a As Json, b As Json) As Boolean
-        Dim e1 As IEnumerable(Of String) = a.ToJson
-        Dim e2 As IEnumerable(Of String) = b.ToJson
-        Dim i1 As IIterator(Of String) = e1.GetIterator
-        Dim i2 As IIterator(Of String) = e2.GetIterator
-        i1.MoveNext()
-        i2.MoveNext()
-        Do While i1.HasCurrent AndAlso i2.HasCurrent
-            If i1.Next <> i2.Next Then
-                Return False
-            End If
-        Loop
-        If i1.HasCurrent = False AndAlso i2.HasCurrent = False Then 'both at the end
+        If a.IsBoolean AndAlso b.IsBoolean Then
+            Return a.ToBoolean = b.ToBoolean
+        ElseIf a.IsDouble AndAlso b.IsDouble Then
+            Return a.ToDouble = b.ToDouble
+        ElseIf a.IsNothing AndAlso b.IsNothing Then
+            Return True
+        ElseIf a.IsString AndAlso b.IsString Then
+            Return a.ToString = b.ToString
+        ElseIf a.IsArray AndAlso b.IsArray AndAlso a.ToArray.Count = b.ToArray.Count Then
+            For index As Integer = 0 To a.ToArray.Count - 1
+                If a.ToArray(index) <> b.ToArray(index) Then
+                    Return False
+                End If
+            Next
+            Return True
+        ElseIf a.IsObject AndAlso b.IsObject AndAlso a.ToObject.Count = b.ToObject.Count Then
+            For Each key As String In a.ToObject.Keys
+                If Not b.ToObject.ContainsKey(key) OrElse a.ToObject(key) <> b.ToObject(key) Then
+                    Return False
+                End If
+            Next
             Return True
         Else
-            Return False
+            Throw New ArgumentException("Can't compare")
         End If
     End Operator
 
@@ -412,6 +490,16 @@
     Public Sub Clear() Implements ICollection(Of KeyValuePair(Of String, Json)).Clear, ICollection(Of Json).Clear
         If Not IsNothing Then ToObject.Clear()
     End Sub
+
+    Public Function Contains(item As String) As Boolean
+        If IsNothing Then Return False
+        If IsArray Then
+            Dim j As New Json
+            j.json_ = item
+            Return ToArray.Contains(j)
+        End If
+        Return False
+    End Function
 
     Public Function Contains(item As KeyValuePair(Of String, Json)) As Boolean Implements ICollection(Of KeyValuePair(Of String, Json)).Contains
         If IsNothing Then Return False Else Return ToObject.Contains(item)
@@ -494,7 +582,7 @@
         ElseIf IsObject Then
             Return ToObject.GetEnumerator
         ElseIf IsArray Then
-            Return ToObject.GetEnumerator
+            Return ToArray.GetEnumerator
         Else
             Throw New ArgumentException("Can't get enumerator")
         End If
@@ -506,7 +594,8 @@
     End Sub
 
     Public Function Contains(item As Json) As Boolean Implements ICollection(Of Json).Contains
-        If IsNothing Then Return False Else Return ToArray.Contains(item)
+        If IsNothing Then Return False Else Return ToArray.Contains(item, New JsonComparer)
+
     End Function
 
     Public Sub CopyTo(array() As Json, arrayIndex As Integer) Implements ICollection(Of Json).CopyTo
@@ -542,4 +631,55 @@
     Public Sub RemoveAt(index As Integer) Implements IList(Of Json).RemoveAt
         If IsNothing Then Throw New ArgumentOutOfRangeException() Else ToArray.RemoveAt(index)
     End Sub
+
+    Public Overrides Function Equals(obj As Object) As Boolean
+        Return Me = CType(obj, Json)
+    End Function
+
+    Private Function CombineHash(e As IEnumerable(Of Integer)) As Integer
+        Dim key As Integer = 1
+        For Each i As Integer In e
+            For shift As Integer = 0 To 3
+                Dim b As Byte = CByte((i >> shift) And &HFF)
+                key += b
+                key += key << 12
+                key = key Xor (key >> 22)
+                key += key << 4
+                key = key Xor (key >> 9)
+                key += key << 10
+                key = key Xor (key >> 2)
+                key += key << 7
+                key = key Xor (key >> 12)
+            Next
+        Next
+        Return key
+    End Function
+
+    Public Overrides Function GetHashCode() As Integer
+        If IsNothing OrElse IsBoolean OrElse IsDouble OrElse IsString Then
+            Return json_.GetHashCode
+        ElseIf IsArray Then
+            Return CombineHash(ToArray.Select(Function(j As Json)
+                                                  Return j.GetHashCode
+                                              End Function))
+        ElseIf IsObject Then
+            Return CombineHash(ToObject.Select(Function(kvp As KeyValuePair(Of String, Json))
+                                                   Return CombineHash({kvp.Key.GetHashCode, kvp.Value.GetHashCode})
+                                               End Function))
+        Else
+            Throw New ArgumentException("Can't GetHashCode")
+        End If
+    End Function
+End Class
+
+Public Class JsonComparer
+    Implements IEqualityComparer(Of Json)
+
+    Public Function Equals1(x As Json, y As Json) As Boolean Implements IEqualityComparer(Of Json).Equals
+        Return x = y
+    End Function
+
+    Public Function GetHashCode1(obj As Json) As Integer Implements IEqualityComparer(Of Json).GetHashCode
+        Return obj.GetHashCode
+    End Function
 End Class

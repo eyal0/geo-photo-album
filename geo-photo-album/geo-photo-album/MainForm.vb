@@ -2,7 +2,7 @@
 Imports System.Web.Script.Serialization
 
 Class MainForm
-
+#Region "Common CSV"
     Private Sub SourceFile_Click(sender As System.Object, e As System.EventArgs, txt As TextBox)
         Dim ofd As New OpenFileDialog
         ofd.DefaultExt = "csv"
@@ -68,6 +68,7 @@ Class MainForm
         End If
         fbd.Dispose()
     End Sub
+#End Region
 #Region "Sort CSV"
     Private Sub btnSourceFile_Click(sender As System.Object, e As System.EventArgs) Handles btnSortSrcFile.Click
         SourceFile_Click(sender, e, txtSortSrc)
@@ -250,6 +251,7 @@ Class MainForm
         End If
     End Sub
 #End Region
+#Region "Hash Files"
     ' utility function to convert a byte array into a hex string
     Private Function ByteArrayToString(ByVal arrInput() As Byte) As String
         Dim sb As New System.Text.StringBuilder(arrInput.Length * 2)
@@ -270,7 +272,7 @@ Class MainForm
             End Using
         End Using
     End Function
-
+#End Region
     Private Sub UpdateFileTags(filter_text As String)
         txtTagFilter.InvokeEx(Sub()
                                   txtTagFilter.Text = filter_text
@@ -295,7 +297,6 @@ Class MainForm
                 Dim d_info As New System.IO.DirectoryInfo(d)
                 If (d_info.Attributes And IO.FileAttributes.ReparsePoint) = 0 Then
                     Dim lvi As New ListViewItem(System.IO.Path.GetFileName(d))
-                    lvi.Tag = d
                     lvi.ImageKey = CacheShellIcon(d)
                     lvFileTags.InvokeEx(Sub()
                                             lvFileTags.Items.Add(lvi)
@@ -311,18 +312,14 @@ Class MainForm
                     Exit Sub
                 End If
                 Dim lvi As New ListViewItem(System.IO.Path.GetFileName(f))
+                lvi.Tag = f
                 If json_files IsNot Nothing Then
                     Dim sha1_hash As String = SHA1CalcFile(f)
                     If json_files.ContainsKey(sha1_hash) Then
-                        lvi.SubItems.Add(String.Join("", json_files(sha1_hash).ToString("", "").Skip(1).Select2(Function(s As String)
-                                                                                                                    Return s
-                                                                                                                End Function,
-                                                                                                                Function(s As String)
-                                                                                                                    Return ""
-                                                                                                                End Function)))
+                        lvi.SubItems.Add(json_files(sha1_hash).ToString)
+                        lvi.SubItems(lvi.SubItems.Count - 1).Tag = json_files(sha1_hash)
                     End If
                 End If
-                lvi.Tag = f
                 lvi.ImageKey = CacheShellIcon(f)
                 lvFileTags.InvokeEx(Sub()
                                         lvFileTags.Items.Add(lvi)
@@ -367,30 +364,6 @@ Class MainForm
         System.IO.File.WriteAllLines(txtTagFile.Text, myJson.ToJson)
     End Sub
 
-    Function StringToDict(s As String) As Dictionary(Of String, Object)
-        Dim ret As New Dictionary(Of String, Object)
-        For Each tag As String In s.Split(","c, ";"c)
-            tag = tag.Trim
-            If tag.Contains(":") Then
-                ret.Add(tag.Substring(0, tag.IndexOf(":")).Trim,
-                                 tag.Substring(tag.IndexOf(":") + 1).Trim)
-            Else
-                ret.Add(tag, "")
-            End If
-        Next
-        Return ret
-    End Function
-
-    Function DictToString(d As Dictionary(Of String, Object)) As String
-        Return String.Join(", ", d.Select(Function(kvp As KeyValuePair(Of String, Object))
-                                              If kvp.Value.ToString <> "" Then
-                                                  Return kvp.Key + ": " + kvp.Value.ToString
-                                              Else
-                                                  Return kvp.Key
-                                              End If
-                                          End Function))
-    End Function
-
     Private Sub btnSaveTags_Click(sender As System.Object, e As System.EventArgs) Handles btnSaveTags.Click
         If Not myJson.ContainsKey("Tags") Then
             myJson.Add("Tags", New Json)
@@ -407,17 +380,15 @@ Class MainForm
             json_all_tags(hash) = new_json
         End If
         If lvFileTags.SelectedItems.Count > 0 Then
-            Dim new_text As String = String.Join("", new_json.ToString("", "").Skip(1).Select2(Function(s As String)
-                                                                                                   Return s
-                                                                                               End Function,
-                                                                                               Function(s As String)
-                                                                                                   Return ""
-                                                                                               End Function))
+            Dim new_text As String = new_json.ToString
             If lvFileTags.SelectedItems(0).SubItems.Count = 1 Then
                 lvFileTags.SelectedItems(0).SubItems.Add(new_text)
+                lvFileTags.SelectedItems(0).SubItems(lvFileTags.SelectedItems(0).SubItems.Count - 1).Tag = new_json
             End If
             lvFileTags.SelectedItems(0).SubItems(1).Text = new_text
+            lvFileTags.SelectedItems(0).SubItems(1).Tag = new_json
         End If
+        AddAutoTags(new_json)
     End Sub
 
     Private Sub CheckJson()
@@ -434,6 +405,102 @@ Class MainForm
         End Try
     End Sub
 
+    Private Sub AddAutoTags(tags As Json)
+        If Not myJson.ContainsKey("TagsMRU") Then
+            myJson.Add("TagsMRU", New Json)
+        End If
+        If Not myJson("TagsMRU").IsArray Then
+            myJson("TagsMRU") = New Json
+        End If
+        For Each kvp As KeyValuePair(Of String, Json) In tags
+            Dim tag As New Json
+            tag.Add(kvp.Key, kvp.Value)
+            If kvp.Key <> "DateTime" AndAlso kvp.Key <> "Filename" AndAlso Not kvp.Key.StartsWith("Gps") Then
+                If Not myJson("TagsMRU")(0) = tag Then
+                    myJson("TagsMRU").Remove(tag)
+                    myJson("TagsMRU").Insert(0, tag)
+                End If
+            End If
+        Next
+    End Sub
+
+    Private Iterator Function GetAutoTags(filename As String) As IEnumerable(Of Json)
+        Dim ret As New List(Of Json)
+        Dim er As ExifLib.ExifReader
+        Try
+            er = New ExifLib.ExifReader(filename)
+        Catch
+            er = Nothing
+        End Try
+        Dim dt As DateTime
+        If er IsNot Nothing AndAlso er.GetTagValue(ExifLib.ExifTags.DateTimeOriginal, dt) Then
+            Dim j As New Json
+            j.Add("DateTime", New Json(dt.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffff", Globalization.CultureInfo.InvariantCulture)))
+            ret.Add(j)
+            Yield j
+        ElseIf er IsNot Nothing AndAlso er.GetTagValue(ExifLib.ExifTags.DateTimeDigitized, dt) Then
+            Dim j As New Json
+            j.Add("DateTime", New Json(dt.ToString("""yyyy-MM-ddTHH\:mm\:ss.fffffff", Globalization.CultureInfo.InvariantCulture)))
+            ret.Add(j)
+            Yield j
+        ElseIf er IsNot Nothing AndAlso er.GetTagValue(ExifLib.ExifTags.DateTime, dt) Then
+            Dim j As New Json
+            j.Add("DateTime", New Json(dt.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffff", Globalization.CultureInfo.InvariantCulture)))
+            ret.Add(j)
+            Yield j
+        Else
+            dt = System.IO.File.GetLastWriteTime(filename)
+            Dim j As New Json
+            j.Add("DateTime", New Json(dt.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffff", Globalization.CultureInfo.InvariantCulture)))
+            ret.Add(j)
+            Yield j
+        End If
+        Dim orient As UInt16
+        If er IsNot Nothing AndAlso er.GetTagValue(ExifLib.ExifTags.Orientation, orient) Then
+            Dim j As New Json
+            j.Add("Orientation", New Json(orient))
+            ret.Add(j)
+            Yield j
+        End If
+        Dim GpsLatitude As Object = Nothing
+        If er IsNot Nothing AndAlso er.GetTagValue(ExifLib.ExifTags.GPSLatitude, GpsLatitude) Then
+            Dim j As New Json
+            j.Add("GpsLatitude", New Json(CDbl(GpsLatitude)))
+            ret.Add(j)
+            Yield j
+        End If
+        Dim GpsLongitude As Object = Nothing
+        If er IsNot Nothing AndAlso er.GetTagValue(ExifLib.ExifTags.GPSLongitude, GpsLongitude) Then
+            Dim j As New Json
+            j.Add("GpsLongitude", New Json(CDbl(GpsLatitude)))
+            ret.Add(j)
+            Yield j
+        End If
+        Dim filename_j As New Json
+        filename_j.Add("Filename", New Json(filename))
+        ret.Add(filename_j)
+        Yield filename_j
+        If myJson.ContainsKey("TagsMRU") AndAlso myJson("TagsMRU").IsArray Then
+            For Each mru_tag As Json In myJson("TagsMRU")
+                If Not ret.Contains(mru_tag) Then
+                    Yield mru_tag
+                End If
+            Next
+        End If
+    End Function
+
+    Private Sub UpdateTagsMRU()
+        Dim j As Json = Json.FromString(txtTags.Text)
+        For item_index As Integer = 0 To lstTags.Items.Count - 1
+            Dim j2 As Json = DirectCast(lstTags.Items(item_index), Json)
+            If j.ContainsKey(j2.Keys(0)) AndAlso j(j2.Keys(0)) = j2(j2.Keys(0)) Then
+                lstTags.SetSelected(item_index, True)
+            Else
+                lstTags.SetSelected(item_index, False)
+            End If
+        Next
+    End Sub
+
     Private Sub lvFileTags_SelectedIndexChanged(sender As System.Object, e As System.EventArgs) Handles lvFileTags.SelectedIndexChanged
         If lvFileTags.SelectedItems.Count > 0 AndAlso System.IO.File.Exists(DirectCast(lvFileTags.SelectedItems(0).Tag, String)) Then
             Dim filename As String = DirectCast(lvFileTags.SelectedItems(0).Tag, String)
@@ -444,35 +511,22 @@ Class MainForm
                 btnSaveTags.Enabled = True
             End If
             lstTags.Items.Clear()
-            Try
-                Dim er As New ExifLib.ExifReader(filename)
-                Dim dt As DateTime
-                If er.GetTagValue(ExifLib.ExifTags.DateTimeOriginal, dt) Then
-                    lstTags.Items.Add("DateTime: """ + dt.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffff", Globalization.CultureInfo.InvariantCulture) + """")
-                ElseIf er.GetTagValue(ExifLib.ExifTags.DateTimeDigitized, dt) Then
-                    lstTags.Items.Add("DateTime: """ + dt.ToString("""yyyy-MM-ddTHH\:mm\:ss.fffffff", Globalization.CultureInfo.InvariantCulture) + """")
-                ElseIf er.GetTagValue(ExifLib.ExifTags.DateTime, dt) Then
-                    lstTags.Items.Add("DateTime: """ + dt.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffff", Globalization.CultureInfo.InvariantCulture) + """")
-                End If
-                Dim orient As UInt16
-                If er.GetTagValue(ExifLib.ExifTags.Orientation, orient) Then
-                    lstTags.Items.Add("Orientation: " + orient.ToString)
-                End If
-            Catch ex As Exception
-                Dim dt As DateTime
-                dt = System.IO.File.GetCreationTime(filename)
-                lstTags.Items.Add("DateTime: """ + dt.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffff", Globalization.CultureInfo.InvariantCulture) + """")
-            End Try
-            Dim j As Json = Json.FromString(txtTags.Text)
-            For item_index As Integer = 0 To lstTags.Items.Count - 1
-                Dim item_string As String = CStr(lstTags.Items(item_index))
-                Dim j2 As Json = Json.FromString(item_string)
-                If j.ContainsKey(j2.Keys(0)) AndAlso j(j2.Keys(0)) = j2(j2.Keys(0)) Then
-                    lstTags.SetSelected(item_index, True)
-                Else
-                    lstTags.SetSelected(item_index, False)
-                End If
+            For Each tag_j As Json In GetAutoTags(filename)
+                lstTags.Items.Add(tag_j)
             Next
+            UpdateTagsMRU()
+            Try
+                picPreview.Image = System.Drawing.Image.FromFile(filename)
+                picPreview.Visible = True
+            Catch ex As Exception
+                picPreview.Visible = False
+            End Try
+            Try
+                wmpPreview.URL = filename
+                wmpPreview.Visible = True
+            Catch ex As Exception
+                wmpPreview.Visible = False
+            End Try
         Else
             txtTags.Text = ""
             btnSaveTags.Enabled = False
@@ -481,13 +535,14 @@ Class MainForm
 
     Private Sub txtTags_TextChanged(sender As Object, e As EventArgs) Handles txtTags.TextChanged
         CheckJson()
+        UpdateTagsMRU()
     End Sub
 
     Private Sub lstTags_SelectedIndexChanged(sender As Object, e As EventArgs) Handles lstTags.SelectedIndexChanged
         Dim j As Json = Json.FromString(txtTags.Text)
         For item_index As Integer = 0 To lstTags.Items.Count - 1
-            Dim item_string As String = CStr(lstTags.Items(item_index))
-            Dim j2 As Json = Json.FromString(item_string)
+            Dim j2 As Json = DirectCast(lstTags.Items(item_index), Json)
+            Dim item_string As String = j2.ToString
             If lstTags.SelectedIndices.Contains(item_index) Then
                 If Not j.ContainsKey(j2.Keys(0)) Then
                     j.Add(j2.Keys(0), j2(j2.Keys(0)))
@@ -500,12 +555,6 @@ Class MainForm
                 End If
             End If
         Next
-        Dim new_text As String = String.Join("", j.ToString("", "").Skip(1).Select2(Function(s As String)
-                                                                                        Return s
-                                                                                    End Function,
-                                                                                    Function(s As String)
-                                                                                        Return ""
-                                                                                    End Function))
-        txtTags.Text = new_text
+        txtTags.Text = j.ToString
     End Sub
 End Class
