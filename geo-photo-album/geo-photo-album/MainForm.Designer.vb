@@ -53,19 +53,21 @@ Partial Class MainForm
         Me.txtTagFile = New System.Windows.Forms.TextBox()
         Me.SplitContainer1 = New System.Windows.Forms.SplitContainer()
         Me.SplitContainer3 = New System.Windows.Forms.SplitContainer()
+        Me.btnIconView = New System.Windows.Forms.Button()
+        Me.btnDetailView = New System.Windows.Forms.Button()
         Me.btnFilterTags = New System.Windows.Forms.Button()
         Me.txtTagFilter = New System.Windows.Forms.TextBox()
-        Me.lvFileTags = New System.Windows.Forms.ListView()
-        Me.ColumnHeader1 = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
-        Me.ColumnHeader2 = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
-        Me.ImageList1 = New System.Windows.Forms.ImageList(Me.components)
+        Me.lvFileTags = New GeoPhotoAlbums.FileView()
+        Me.LargeImageList = New System.Windows.Forms.ImageList(Me.components)
+        Me.SmallImageList = New System.Windows.Forms.ImageList(Me.components)
         Me.SplitContainer5 = New System.Windows.Forms.SplitContainer()
         Me.picPreview = New System.Windows.Forms.PictureBox()
         Me.wmpPreview = New AxWMPLib.AxWindowsMediaPlayer()
-        Me.lstTags = New System.Windows.Forms.ListBox()
+        Me.lstTagsMRU = New System.Windows.Forms.CheckedListBox()
         Me.btnSaveTags = New System.Windows.Forms.Button()
         Me.txtTags = New System.Windows.Forms.TextBox()
-        Me.lvFileTagsWorker = New System.ComponentModel.BackgroundWorker()
+        Me.ColumnHeader1 = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
+        Me.ColumnHeader2 = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
         Me.MainTab.SuspendLayout()
         Me.TabSortCsv.SuspendLayout()
         Me.TabFilterCsv.SuspendLayout()
@@ -99,7 +101,7 @@ Partial Class MainForm
         Me.MainTab.Location = New System.Drawing.Point(0, 0)
         Me.MainTab.Name = "MainTab"
         Me.MainTab.SelectedIndex = 0
-        Me.MainTab.Size = New System.Drawing.Size(1139, 650)
+        Me.MainTab.Size = New System.Drawing.Size(1153, 654)
         Me.MainTab.TabIndex = 0
         '
         'TabSortCsv
@@ -116,7 +118,7 @@ Partial Class MainForm
         Me.TabSortCsv.Location = New System.Drawing.Point(4, 22)
         Me.TabSortCsv.Name = "TabSortCsv"
         Me.TabSortCsv.Padding = New System.Windows.Forms.Padding(3)
-        Me.TabSortCsv.Size = New System.Drawing.Size(1131, 624)
+        Me.TabSortCsv.Size = New System.Drawing.Size(1145, 628)
         Me.TabSortCsv.TabIndex = 0
         Me.TabSortCsv.Text = "Sort CSV"
         Me.TabSortCsv.UseVisualStyleBackColor = True
@@ -224,7 +226,7 @@ Partial Class MainForm
         Me.TabFilterCsv.Location = New System.Drawing.Point(4, 22)
         Me.TabFilterCsv.Name = "TabFilterCsv"
         Me.TabFilterCsv.Padding = New System.Windows.Forms.Padding(3)
-        Me.TabFilterCsv.Size = New System.Drawing.Size(1131, 624)
+        Me.TabFilterCsv.Size = New System.Drawing.Size(1145, 628)
         Me.TabFilterCsv.TabIndex = 1
         Me.TabFilterCsv.Text = "Filter CSV"
         Me.TabFilterCsv.UseVisualStyleBackColor = True
@@ -323,7 +325,7 @@ Partial Class MainForm
         Me.TabTagFiles.Location = New System.Drawing.Point(4, 22)
         Me.TabTagFiles.Name = "TabTagFiles"
         Me.TabTagFiles.Padding = New System.Windows.Forms.Padding(3)
-        Me.TabTagFiles.Size = New System.Drawing.Size(1131, 624)
+        Me.TabTagFiles.Size = New System.Drawing.Size(1145, 628)
         Me.TabTagFiles.TabIndex = 2
         Me.TabTagFiles.Text = "Tag Files"
         Me.TabTagFiles.UseVisualStyleBackColor = True
@@ -346,14 +348,14 @@ Partial Class MainForm
         'SplitContainer4.Panel2
         '
         Me.SplitContainer4.Panel2.Controls.Add(Me.SplitContainer1)
-        Me.SplitContainer4.Size = New System.Drawing.Size(1125, 618)
+        Me.SplitContainer4.Size = New System.Drawing.Size(1139, 622)
         Me.SplitContainer4.SplitterDistance = 32
         Me.SplitContainer4.TabIndex = 1
         '
         'btnSaveJson
         '
         Me.btnSaveJson.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.btnSaveJson.Location = New System.Drawing.Point(1067, 5)
+        Me.btnSaveJson.Location = New System.Drawing.Point(1081, 5)
         Me.btnSaveJson.Name = "btnSaveJson"
         Me.btnSaveJson.Size = New System.Drawing.Size(55, 23)
         Me.btnSaveJson.TabIndex = 23
@@ -363,7 +365,7 @@ Partial Class MainForm
         'btnLoadJson
         '
         Me.btnLoadJson.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.btnLoadJson.Location = New System.Drawing.Point(1006, 5)
+        Me.btnLoadJson.Location = New System.Drawing.Point(1020, 5)
         Me.btnLoadJson.Name = "btnLoadJson"
         Me.btnLoadJson.Size = New System.Drawing.Size(55, 23)
         Me.btnLoadJson.TabIndex = 22
@@ -385,7 +387,7 @@ Partial Class MainForm
             Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
         Me.txtTagFile.Location = New System.Drawing.Point(82, 5)
         Me.txtTagFile.Name = "txtTagFile"
-        Me.txtTagFile.Size = New System.Drawing.Size(918, 20)
+        Me.txtTagFile.Size = New System.Drawing.Size(932, 20)
         Me.txtTagFile.TabIndex = 20
         Me.txtTagFile.Text = "E:\Users\Eyal\Pictures\World Tour 2011-2012\photo_info.json"
         '
@@ -402,33 +404,56 @@ Partial Class MainForm
         'SplitContainer1.Panel2
         '
         Me.SplitContainer1.Panel2.Controls.Add(Me.SplitContainer5)
-        Me.SplitContainer1.Size = New System.Drawing.Size(1125, 582)
-        Me.SplitContainer1.SplitterDistance = 641
+        Me.SplitContainer1.Size = New System.Drawing.Size(1139, 586)
+        Me.SplitContainer1.SplitterDistance = 649
         Me.SplitContainer1.TabIndex = 0
         '
         'SplitContainer3
         '
         Me.SplitContainer3.Dock = System.Windows.Forms.DockStyle.Fill
+        Me.SplitContainer3.FixedPanel = System.Windows.Forms.FixedPanel.Panel1
         Me.SplitContainer3.Location = New System.Drawing.Point(0, 0)
         Me.SplitContainer3.Name = "SplitContainer3"
         Me.SplitContainer3.Orientation = System.Windows.Forms.Orientation.Horizontal
         '
         'SplitContainer3.Panel1
         '
+        Me.SplitContainer3.Panel1.Controls.Add(Me.btnIconView)
+        Me.SplitContainer3.Panel1.Controls.Add(Me.btnDetailView)
         Me.SplitContainer3.Panel1.Controls.Add(Me.btnFilterTags)
         Me.SplitContainer3.Panel1.Controls.Add(Me.txtTagFilter)
         '
         'SplitContainer3.Panel2
         '
         Me.SplitContainer3.Panel2.Controls.Add(Me.lvFileTags)
-        Me.SplitContainer3.Size = New System.Drawing.Size(641, 582)
-        Me.SplitContainer3.SplitterDistance = 52
+        Me.SplitContainer3.Size = New System.Drawing.Size(649, 586)
+        Me.SplitContainer3.SplitterDistance = 59
         Me.SplitContainer3.TabIndex = 0
+        '
+        'btnIconView
+        '
+        Me.btnIconView.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.btnIconView.Location = New System.Drawing.Point(64, 31)
+        Me.btnIconView.Name = "btnIconView"
+        Me.btnIconView.Size = New System.Drawing.Size(55, 23)
+        Me.btnIconView.TabIndex = 25
+        Me.btnIconView.Text = "Icons"
+        Me.btnIconView.UseVisualStyleBackColor = True
+        '
+        'btnDetailView
+        '
+        Me.btnDetailView.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.btnDetailView.Location = New System.Drawing.Point(3, 31)
+        Me.btnDetailView.Name = "btnDetailView"
+        Me.btnDetailView.Size = New System.Drawing.Size(55, 23)
+        Me.btnDetailView.TabIndex = 24
+        Me.btnDetailView.Text = "Details"
+        Me.btnDetailView.UseVisualStyleBackColor = True
         '
         'btnFilterTags
         '
         Me.btnFilterTags.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.btnFilterTags.Location = New System.Drawing.Point(583, 3)
+        Me.btnFilterTags.Location = New System.Drawing.Point(591, 3)
         Me.btnFilterTags.Name = "btnFilterTags"
         Me.btnFilterTags.Size = New System.Drawing.Size(55, 23)
         Me.btnFilterTags.TabIndex = 23
@@ -441,7 +466,7 @@ Partial Class MainForm
             Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
         Me.txtTagFilter.Location = New System.Drawing.Point(3, 5)
         Me.txtTagFilter.Name = "txtTagFilter"
-        Me.txtTagFilter.Size = New System.Drawing.Size(574, 20)
+        Me.txtTagFilter.Size = New System.Drawing.Size(582, 20)
         Me.txtTagFilter.TabIndex = 0
         Me.txtTagFilter.Text = "E:\Users\Eyal\Pictures\World Tour 2011-2012\Thailand\Bangkok"
         '
@@ -451,29 +476,28 @@ Partial Class MainForm
         Me.lvFileTags.Dock = System.Windows.Forms.DockStyle.Fill
         Me.lvFileTags.FullRowSelect = True
         Me.lvFileTags.GridLines = True
+        Me.lvFileTags.LargeImageList = Me.LargeImageList
         Me.lvFileTags.Location = New System.Drawing.Point(0, 0)
-        Me.lvFileTags.MultiSelect = False
+        Me.lvFileTags.my_json = Nothing
         Me.lvFileTags.Name = "lvFileTags"
         Me.lvFileTags.ShowGroups = False
-        Me.lvFileTags.Size = New System.Drawing.Size(641, 526)
-        Me.lvFileTags.SmallImageList = Me.ImageList1
+        Me.lvFileTags.Size = New System.Drawing.Size(649, 523)
+        Me.lvFileTags.SmallImageList = Me.SmallImageList
         Me.lvFileTags.TabIndex = 0
         Me.lvFileTags.UseCompatibleStateImageBehavior = False
         Me.lvFileTags.View = System.Windows.Forms.View.Details
         '
-        'ColumnHeader1
+        'LargeImageList
         '
-        Me.ColumnHeader1.Text = "Name"
+        Me.LargeImageList.ColorDepth = System.Windows.Forms.ColorDepth.Depth32Bit
+        Me.LargeImageList.ImageSize = New System.Drawing.Size(64, 64)
+        Me.LargeImageList.TransparentColor = System.Drawing.Color.Transparent
         '
-        'ColumnHeader2
+        'SmallImageList
         '
-        Me.ColumnHeader2.Text = "Tags"
-        '
-        'ImageList1
-        '
-        Me.ImageList1.ColorDepth = System.Windows.Forms.ColorDepth.Depth8Bit
-        Me.ImageList1.ImageSize = New System.Drawing.Size(16, 16)
-        Me.ImageList1.TransparentColor = System.Drawing.Color.Transparent
+        Me.SmallImageList.ColorDepth = System.Windows.Forms.ColorDepth.Depth8Bit
+        Me.SmallImageList.ImageSize = New System.Drawing.Size(16, 16)
+        Me.SmallImageList.TransparentColor = System.Drawing.Color.Transparent
         '
         'SplitContainer5
         '
@@ -489,11 +513,11 @@ Partial Class MainForm
         '
         'SplitContainer5.Panel2
         '
-        Me.SplitContainer5.Panel2.Controls.Add(Me.lstTags)
+        Me.SplitContainer5.Panel2.Controls.Add(Me.lstTagsMRU)
         Me.SplitContainer5.Panel2.Controls.Add(Me.btnSaveTags)
         Me.SplitContainer5.Panel2.Controls.Add(Me.txtTags)
-        Me.SplitContainer5.Size = New System.Drawing.Size(480, 582)
-        Me.SplitContainer5.SplitterDistance = 261
+        Me.SplitContainer5.Size = New System.Drawing.Size(486, 586)
+        Me.SplitContainer5.SplitterDistance = 263
         Me.SplitContainer5.TabIndex = 5
         '
         'picPreview
@@ -501,7 +525,7 @@ Partial Class MainForm
         Me.picPreview.Dock = System.Windows.Forms.DockStyle.Fill
         Me.picPreview.Location = New System.Drawing.Point(0, 0)
         Me.picPreview.Name = "picPreview"
-        Me.picPreview.Size = New System.Drawing.Size(480, 261)
+        Me.picPreview.Size = New System.Drawing.Size(486, 263)
         Me.picPreview.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom
         Me.picPreview.TabIndex = 0
         Me.picPreview.TabStop = False
@@ -513,27 +537,26 @@ Partial Class MainForm
         Me.wmpPreview.Location = New System.Drawing.Point(0, 0)
         Me.wmpPreview.Name = "wmpPreview"
         Me.wmpPreview.OcxState = CType(resources.GetObject("wmpPreview.OcxState"), System.Windows.Forms.AxHost.State)
-        Me.wmpPreview.Size = New System.Drawing.Size(480, 261)
+        Me.wmpPreview.Size = New System.Drawing.Size(486, 263)
         Me.wmpPreview.TabIndex = 0
         '
-        'lstTags
+        'lstTagsMRU
         '
-        Me.lstTags.Anchor = CType((((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Bottom) _
+        Me.lstTagsMRU.Anchor = CType((((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Bottom) _
             Or System.Windows.Forms.AnchorStyles.Left) _
             Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.lstTags.FormattingEnabled = True
-        Me.lstTags.IntegralHeight = False
-        Me.lstTags.Location = New System.Drawing.Point(3, 104)
-        Me.lstTags.Name = "lstTags"
-        Me.lstTags.SelectionMode = System.Windows.Forms.SelectionMode.MultiSimple
-        Me.lstTags.Size = New System.Drawing.Size(472, 208)
-        Me.lstTags.TabIndex = 2
+        Me.lstTagsMRU.FormattingEnabled = True
+        Me.lstTagsMRU.IntegralHeight = False
+        Me.lstTagsMRU.Location = New System.Drawing.Point(3, 104)
+        Me.lstTagsMRU.Name = "lstTagsMRU"
+        Me.lstTagsMRU.Size = New System.Drawing.Size(478, 210)
+        Me.lstTagsMRU.TabIndex = 2
         '
         'btnSaveTags
         '
         Me.btnSaveTags.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
         Me.btnSaveTags.Enabled = False
-        Me.btnSaveTags.Location = New System.Drawing.Point(427, 3)
+        Me.btnSaveTags.Location = New System.Drawing.Point(433, 3)
         Me.btnSaveTags.Name = "btnSaveTags"
         Me.btnSaveTags.Size = New System.Drawing.Size(48, 23)
         Me.btnSaveTags.TabIndex = 1
@@ -547,18 +570,24 @@ Partial Class MainForm
         Me.txtTags.Location = New System.Drawing.Point(3, 5)
         Me.txtTags.Multiline = True
         Me.txtTags.Name = "txtTags"
-        Me.txtTags.Size = New System.Drawing.Size(418, 93)
+        Me.txtTags.Size = New System.Drawing.Size(424, 93)
         Me.txtTags.TabIndex = 0
         '
-        'lvFileTagsWorker
+        'ColumnHeader1
         '
-        Me.lvFileTagsWorker.WorkerSupportsCancellation = True
+        Me.ColumnHeader1.Text = "File"
+        Me.ColumnHeader1.Width = 100
+        '
+        'ColumnHeader2
+        '
+        Me.ColumnHeader2.Text = "Tags"
+        Me.ColumnHeader2.Width = 300
         '
         'MainForm
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
-        Me.ClientSize = New System.Drawing.Size(1139, 650)
+        Me.ClientSize = New System.Drawing.Size(1153, 654)
         Me.Controls.Add(Me.MainTab)
         Me.Name = "MainForm"
         Me.Text = "GeoPhotoAlbum"
@@ -627,12 +656,14 @@ Partial Class MainForm
     Friend WithEvents SplitContainer3 As System.Windows.Forms.SplitContainer
     Friend WithEvents btnFilterTags As System.Windows.Forms.Button
     Friend WithEvents txtTagFilter As System.Windows.Forms.TextBox
-    Friend WithEvents lvFileTags As System.Windows.Forms.ListView
+    Friend WithEvents SmallImageList As System.Windows.Forms.ImageList
+    Friend WithEvents btnSaveJson As System.Windows.Forms.Button
+    Friend WithEvents lstTagsMRU As System.Windows.Forms.CheckedListBox
+    Friend WithEvents btnDetailView As System.Windows.Forms.Button
+    Friend WithEvents btnIconView As System.Windows.Forms.Button
+    Friend WithEvents LargeImageList As System.Windows.Forms.ImageList
+    Friend WithEvents lvFileTags As GeoPhotoAlbums.FileView
     Friend WithEvents ColumnHeader1 As System.Windows.Forms.ColumnHeader
     Friend WithEvents ColumnHeader2 As System.Windows.Forms.ColumnHeader
-    Friend WithEvents ImageList1 As System.Windows.Forms.ImageList
-    Friend WithEvents lvFileTagsWorker As System.ComponentModel.BackgroundWorker
-    Friend WithEvents btnSaveJson As System.Windows.Forms.Button
-    Friend WithEvents lstTags As System.Windows.Forms.ListBox
 
 End Class

@@ -21,6 +21,11 @@ Public Class Json
         json_ = b
     End Sub
 
+    Sub New(kvp As KeyValuePair(Of String, Json))
+        json_ = New Dictionary(Of String, Json)
+        Me.Add(kvp)
+    End Sub
+
     Sub MergeFile(f As String)
         Dim new_json As Json = FromFile(f)
         MergeJson(new_json)
@@ -474,7 +479,7 @@ Public Class Json
             Next
             Return True
         Else
-            Throw New ArgumentException("Can't compare")
+            Return False
         End If
     End Operator
 

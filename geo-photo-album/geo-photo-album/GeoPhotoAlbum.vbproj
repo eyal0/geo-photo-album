@@ -94,6 +94,9 @@
     <Compile Include="Coordinate.vb" />
     <Compile Include="Csv.vb" />
     <Compile Include="EnumerableExtensions.vb" />
+    <Compile Include="FileView.vb">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="GpsSample.vb" />
     <Compile Include="ISynchronizeInvokeExtensions.vb" />
     <Compile Include="Json.vb" />
@@ -120,6 +123,7 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
     <Compile Include="PointD.vb" />
+    <Compile Include="SHA1.vb" />
     <Compile Include="SHGetFileInfo.vb" />
   </ItemGroup>
   <ItemGroup>

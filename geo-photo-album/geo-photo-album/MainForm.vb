@@ -240,6 +240,7 @@ Class MainForm
             'Now load in the tags and everything else
             If System.IO.File.Exists(txtTagFile.Text) Then
                 myJson.MergeFile(txtTagFile.Text)
+                lvFileTags.my_json = myJson
             End If
         End If
         ofd.Dispose()
@@ -250,160 +251,62 @@ Class MainForm
             btnFilterTags.PerformClick()
         End If
     End Sub
-#End Region
-#Region "Hash Files"
-    ' utility function to convert a byte array into a hex string
-    Private Function ByteArrayToString(ByVal arrInput() As Byte) As String
-        Dim sb As New System.Text.StringBuilder(arrInput.Length * 2)
-        For i As Integer = 0 To arrInput.Length - 1
-            sb.Append(arrInput(i).ToString("X2"))
-        Next
-        Return sb.ToString().ToLower
-    End Function
-
-    Public Function SHA1CalcFile(ByVal filepath As String) As String
-        ' open file (as read-only)
-        Using reader As New System.IO.FileStream(filepath, IO.FileMode.Open, IO.FileAccess.Read)
-            Using sha1 As New System.Security.Cryptography.SHA1CryptoServiceProvider
-                ' hash contents of this stream
-                Dim hash() As Byte = sha1.ComputeHash(reader)
-                ' return formatted hash
-                Return ByteArrayToString(hash)
-            End Using
-        End Using
-    End Function
-#End Region
-    Private Sub UpdateFileTags(filter_text As String)
-        txtTagFilter.InvokeEx(Sub()
-                                  txtTagFilter.Text = filter_text
-                              End Sub)
-        lvFileTags.InvokeEx(Sub()
-                                lvFileTags.Items.Clear()
-                            End Sub)
-        If (System.IO.Directory.Exists(filter_text) AndAlso
-            (New System.IO.DirectoryInfo(filter_text).Attributes And IO.FileAttributes.ReparsePoint) = 0) Then
-            If System.IO.Directory.GetParent(filter_text) IsNot Nothing Then
-                Dim lvi_subdir As New ListViewItem("..")
-                lvi_subdir.Tag = System.IO.Directory.GetParent(filter_text).FullName
-                lvi_subdir.ImageKey = CacheShellIcon(System.IO.Directory.GetParent(filter_text).FullName)
-                lvFileTags.InvokeEx(Sub()
-                                        lvFileTags.Items.Add(lvi_subdir)
-                                    End Sub)
-            End If
-            For Each d As String In System.IO.Directory.EnumerateDirectories(filter_text)
-                If lvFileTagsWorker.CancellationPending Then
-                    Exit Sub
-                End If
-                Dim d_info As New System.IO.DirectoryInfo(d)
-                If (d_info.Attributes And IO.FileAttributes.ReparsePoint) = 0 Then
-                    Dim lvi As New ListViewItem(System.IO.Path.GetFileName(d))
-                    lvi.ImageKey = CacheShellIcon(d)
-                    lvFileTags.InvokeEx(Sub()
-                                            lvFileTags.Items.Add(lvi)
-                                        End Sub)
-                End If
-            Next
-            Dim json_files As Json = Nothing
-            If myJson.ContainsKey("Tags") Then
-                json_files = myJson("Tags")
-            End If
-            For Each f As String In System.IO.Directory.EnumerateFiles(filter_text)
-                If lvFileTagsWorker.CancellationPending Then
-                    Exit Sub
-                End If
-                Dim lvi As New ListViewItem(System.IO.Path.GetFileName(f))
-                lvi.Tag = f
-                If json_files IsNot Nothing Then
-                    Dim sha1_hash As String = SHA1CalcFile(f)
-                    If json_files.ContainsKey(sha1_hash) Then
-                        lvi.SubItems.Add(json_files(sha1_hash).ToString)
-                        lvi.SubItems(lvi.SubItems.Count - 1).Tag = json_files(sha1_hash)
-                    End If
-                End If
-                lvi.ImageKey = CacheShellIcon(f)
-                lvFileTags.InvokeEx(Sub()
-                                        lvFileTags.Items.Add(lvi)
-                                    End Sub)
-            Next
-        End If
-    End Sub
 
     Private Sub btnFilterTags_Click(sender As System.Object, e As System.EventArgs) Handles btnFilterTags.Click
-        Do While lvFileTagsWorker.IsBusy
-            lvFileTagsWorker.CancelAsync()
-            Application.DoEvents()
-        Loop
-        lvFileTagsWorker.RunWorkerAsync(txtTagFilter.Text)
-    End Sub
-
-    Private Sub lvFileTags_MouseDoubleClick(sender As System.Object, e As System.Windows.Forms.MouseEventArgs) Handles lvFileTags.MouseDoubleClick
-        Dim s As String = CType(lvFileTags.SelectedItems(0).Tag, String)
-        If System.IO.Directory.Exists(s) Then
-            Do While lvFileTagsWorker.IsBusy
-                lvFileTagsWorker.CancelAsync()
-                Application.DoEvents()
-            Loop
-            lvFileTagsWorker.RunWorkerAsync(s)
-        End If
-    End Sub
-
-    Function CacheShellIcon(ByVal argPath As String) As String
-        Dim mKey As String = argPath
-        ' check if an icon for this key has already been added to the collection
-        If ImageList1.Images.ContainsKey(mKey) = False Then
-            ImageList1.Images.Add(mKey, GetShellIconAsImage(argPath))
-        End If
-        Return mKey
-    End Function
-
-    Private Sub lvFileTagsWorker_DoWork(sender As System.Object, e As System.ComponentModel.DoWorkEventArgs) Handles lvFileTagsWorker.DoWork
-        UpdateFileTags(CType(e.Argument, String))
+        lvFileTags.Filter = txtTagFilter.Text
     End Sub
 
     Private Sub btnSaveJson_Click(sender As System.Object, e As System.EventArgs) Handles btnSaveJson.Click
         System.IO.File.WriteAllLines(txtTagFile.Text, myJson.ToJson)
     End Sub
+#End Region
 
-    Private Sub btnSaveTags_Click(sender As System.Object, e As System.EventArgs) Handles btnSaveTags.Click
-        If Not myJson.ContainsKey("Tags") Then
-            myJson.Add("Tags", New Json)
-        End If
-        Dim json_all_tags As Json
-        json_all_tags = myJson("Tags")
-        Dim hash As String = SHA1CalcFile(DirectCast(lvFileTags.SelectedItems(0).Tag, String))
-        Dim new_json As Json = Json.FromString(txtTags.Text)
-        If new_json.Count = 0 AndAlso json_all_tags.ContainsKey(hash) Then
-            json_all_tags.Remove(hash)
-        ElseIf Not json_all_tags.ContainsKey(hash) Then
-            json_all_tags.Add(hash, new_json)
-        Else
-            json_all_tags(hash) = new_json
-        End If
-        If lvFileTags.SelectedItems.Count > 0 Then
-            Dim new_text As String = new_json.ToString
-            If lvFileTags.SelectedItems(0).SubItems.Count = 1 Then
-                lvFileTags.SelectedItems(0).SubItems.Add(new_text)
-                lvFileTags.SelectedItems(0).SubItems(lvFileTags.SelectedItems(0).SubItems.Count - 1).Tag = new_json
-            End If
-            lvFileTags.SelectedItems(0).SubItems(1).Text = new_text
-            lvFileTags.SelectedItems(0).SubItems(1).Tag = new_json
-        End If
-        AddAutoTags(new_json)
-    End Sub
-
-    Private Sub CheckJson()
-        txtTags.ForeColor = Color.Black
-        Try
-            If txtTags.Text <> "" Then
-                Json.FromString(txtTags.Text)
-            End If
-            txtTags.ForeColor = Color.Green
-            btnSaveTags.Enabled = (lvFileTags.SelectedItems.Count > 0)
-        Catch ex As Exception
-            txtTags.ForeColor = Color.Red
-            btnSaveTags.Enabled = False
-        End Try
-    End Sub
+    'Private Sub btnSaveTags_Click(sender As System.Object, e As System.EventArgs) Handles btnSaveTags.Click
+    '    If Not myJson.ContainsKey("Tags") Then
+    '        myJson.Add("Tags", New Json)
+    '    End If
+    '    Dim json_all_tags As Json
+    '    json_all_tags = myJson("Tags")
+    '    Dim for_addition As Json = Json.FromString(txtTags.Text)
+    '    Dim for_removal As New Json
+    '    For mru_index As Integer = 0 To lstTagsMRU.Items.Count - 1
+    '        If lstTagsMRU.GetItemCheckState(mru_index) = CheckState.Checked AndAlso Not for_addition.conThen Then
+    '            for_addition.Add(DirectCast(lstTagsMRU.Items(mru_index), Json))
+    '        ElseIf lstTagsMRU.GetItemCheckState(mru_index) = CheckState.Unchecked Then
+    '            for_removal.Add(DirectCast(lstTagsMRU.Items(mru_index), Json))
+    '        End If
+    '    Next
+    '    For Each selected_index As Integer In lvFileTags.SelectedIndices
+    '        Dim current_hash As String = SHA1CalcFile(DirectCast(lvFileTags.SelectedItems(selected_index).Tag, String))
+    '        If Not json_all_tags.ContainsKey(current_hash) Then
+    '            json_all_tags.Add(current_hash, New Json) 'add it in no matter what, maybe remove later
+    '        End If
+    '        For Each add_tag As KeyValuePair(Of String, Json) In for_addition
+    '            If Not json_all_tags(current_hash).ContainsKey(add_tag.Key) OrElse json_all_tags(current_hash)(add_tag.Key) <> add_tag.Value Then
+    '                json_all_tags(current_hash)(add_tag.Key) = add_tag.Value
+    '            End If
+    '        Next
+    '        For Each remove_tag As KeyValuePair(Of String, Json) In for_removal
+    '            If json_all_tags(current_hash).ContainsKey(remove_tag.Key) AndAlso json_all_tags(current_hash)(remove_tag.Key) = remove_tag.Value Then
+    '                json_all_tags(current_hash).Remove(remove_tag.Key)
+    '            End If
+    '        Next
+    '        If json_all_tags(current_hash).Count = 0 Then
+    '            json_all_tags.Remove(current_hash)
+    '            If lvFileTags.SelectedItems(selected_index).SubItems.Count > 1 Then
+    '                lvFileTags.SelectedItems(selected_index).SubItems.RemoveAt(1)
+    '            End If
+    '        Else
+    '            If lvFileTags.SelectedItems(selected_index).SubItems.Count = 1 Then
+    '                lvFileTags.SelectedItems(selected_index).SubItems.Add(json_all_tags(current_hash).ToString)
+    '            Else
+    '                lvFileTags.SelectedItems(selected_index).SubItems(1).Text = json_all_tags(current_hash).ToString
+    '            End If
+    '            lvFileTags.SelectedItems(selected_index).SubItems(1).Tag = json_all_tags(current_hash)
+    '        End If
+    '    Next
+    '    AddAutoTags(for_addition)
+    'End Sub
 
     Private Sub AddAutoTags(tags As Json)
         If Not myJson.ContainsKey("TagsMRU") Then
@@ -424,8 +327,8 @@ Class MainForm
         Next
     End Sub
 
-    Private Iterator Function GetAutoTags(filename As String) As IEnumerable(Of Json)
-        Dim ret As New List(Of Json)
+    Private Function GetAutoTags(filename As String) As List(Of KeyValuePair(Of String, Json))
+        Dim ret As New List(Of KeyValuePair(Of String, Json))
         Dim er As ExifLib.ExifReader
         Try
             er = New ExifLib.ExifReader(filename)
@@ -434,127 +337,170 @@ Class MainForm
         End Try
         Dim dt As DateTime
         If er IsNot Nothing AndAlso er.GetTagValue(ExifLib.ExifTags.DateTimeOriginal, dt) Then
-            Dim j As New Json
-            j.Add("DateTime", New Json(dt.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffff", Globalization.CultureInfo.InvariantCulture)))
-            ret.Add(j)
-            Yield j
+            ret.Add(New KeyValuePair(Of String, Json)("DateTime",
+                                                      New Json(dt.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffff", Globalization.CultureInfo.InvariantCulture))))
         ElseIf er IsNot Nothing AndAlso er.GetTagValue(ExifLib.ExifTags.DateTimeDigitized, dt) Then
-            Dim j As New Json
-            j.Add("DateTime", New Json(dt.ToString("""yyyy-MM-ddTHH\:mm\:ss.fffffff", Globalization.CultureInfo.InvariantCulture)))
-            ret.Add(j)
-            Yield j
+            ret.Add(New KeyValuePair(Of String, Json)("DateTime",
+                                                      New Json(dt.ToString("""yyyy-MM-ddTHH\:mm\:ss.fffffff", Globalization.CultureInfo.InvariantCulture))))
         ElseIf er IsNot Nothing AndAlso er.GetTagValue(ExifLib.ExifTags.DateTime, dt) Then
-            Dim j As New Json
-            j.Add("DateTime", New Json(dt.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffff", Globalization.CultureInfo.InvariantCulture)))
-            ret.Add(j)
-            Yield j
+            ret.Add(New KeyValuePair(Of String, Json)("DateTime",
+                                                      New Json(dt.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffff", Globalization.CultureInfo.InvariantCulture))))
         Else
             dt = System.IO.File.GetLastWriteTime(filename)
-            Dim j As New Json
-            j.Add("DateTime", New Json(dt.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffff", Globalization.CultureInfo.InvariantCulture)))
-            ret.Add(j)
-            Yield j
+            ret.Add(New KeyValuePair(Of String, Json)("DateTime",
+                                                      New Json(dt.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffff", Globalization.CultureInfo.InvariantCulture))))
         End If
         Dim orient As UInt16
         If er IsNot Nothing AndAlso er.GetTagValue(ExifLib.ExifTags.Orientation, orient) Then
-            Dim j As New Json
-            j.Add("Orientation", New Json(orient))
-            ret.Add(j)
-            Yield j
+            ret.Add(New KeyValuePair(Of String, Json)("Orientation",
+                                                      New Json(orient)))
         End If
         Dim GpsLatitude As Object = Nothing
         If er IsNot Nothing AndAlso er.GetTagValue(ExifLib.ExifTags.GPSLatitude, GpsLatitude) Then
-            Dim j As New Json
-            j.Add("GpsLatitude", New Json(CDbl(GpsLatitude)))
-            ret.Add(j)
-            Yield j
+            ret.Add(New KeyValuePair(Of String, Json)("GpsLatitude", New Json(CDbl(GpsLatitude))))
         End If
         Dim GpsLongitude As Object = Nothing
         If er IsNot Nothing AndAlso er.GetTagValue(ExifLib.ExifTags.GPSLongitude, GpsLongitude) Then
-            Dim j As New Json
-            j.Add("GpsLongitude", New Json(CDbl(GpsLatitude)))
-            ret.Add(j)
-            Yield j
+            ret.Add(New KeyValuePair(Of String, Json)("GpsLongitude", New Json(CDbl(GpsLatitude))))
         End If
-        Dim filename_j As New Json
-        filename_j.Add("Filename", New Json(filename))
-        ret.Add(filename_j)
-        Yield filename_j
-        If myJson.ContainsKey("TagsMRU") AndAlso myJson("TagsMRU").IsArray Then
-            For Each mru_tag As Json In myJson("TagsMRU")
-                If Not ret.Contains(mru_tag) Then
-                    Yield mru_tag
-                End If
-            Next
-        End If
+        ret.Add(New KeyValuePair(Of String, Json)("Filename", New Json(filename)))
+        Return ret
     End Function
 
-    Private Sub UpdateTagsMRU()
-        Dim j As Json = Json.FromString(txtTags.Text)
-        For item_index As Integer = 0 To lstTags.Items.Count - 1
-            Dim j2 As Json = DirectCast(lstTags.Items(item_index), Json)
-            If j.ContainsKey(j2.Keys(0)) AndAlso j(j2.Keys(0)) = j2(j2.Keys(0)) Then
-                lstTags.SetSelected(item_index, True)
+    Private Sub lvFileTags_SelectedIndexChanged(sender As System.Object, e As System.EventArgs) Handles lvFileTags.SelectedIndexChanged
+        Dim valid_selection As Boolean = lvFileTags.SelectedItems.Count > 0
+        Dim jsons As New Dictionary(Of String, Json)
+        For Each i As Integer In lvFileTags.SelectedIndices
+            If lvFileTags.IsDirectory(i) Then
+                valid_selection = False
+                Exit For
             Else
-                lstTags.SetSelected(item_index, False)
+                jsons.Add(lvFileTags.Hash(i), lvFileTags.Json(i))
             End If
         Next
-    End Sub
-
-    Private Sub lvFileTags_SelectedIndexChanged(sender As System.Object, e As System.EventArgs) Handles lvFileTags.SelectedIndexChanged
-        If lvFileTags.SelectedItems.Count > 0 AndAlso System.IO.File.Exists(DirectCast(lvFileTags.SelectedItems(0).Tag, String)) Then
-            Dim filename As String = DirectCast(lvFileTags.SelectedItems(0).Tag, String)
-            If lvFileTags.SelectedItems(0).SubItems.Count > 1 Then
-                txtTags.Text = lvFileTags.SelectedItems(0).SubItems(1).Text
-            Else
-                txtTags.Text = ""
-                btnSaveTags.Enabled = True
-            End If
-            lstTags.Items.Clear()
-            For Each tag_j As Json In GetAutoTags(filename)
-                lstTags.Items.Add(tag_j)
+        If valid_selection Then
+            'convert the jsons to MRU rows
+            lstTagsMRU.Items.Clear()
+            Dim MRU_rows As New Dictionary(Of String, Json)
+            For Each index As Integer In lvFileTags.SelectedIndices
+                Dim hash As String = lvFileTags.Hash(index)
+                Dim json As Json = lvFileTags.Json(index)
+                If json IsNot Nothing Then
+                    For Each Tag As KeyValuePair(Of String, Json) In json
+                        If Not MRU_rows.ContainsKey(Tag.Key) Then
+                            MRU_rows.Add(Tag.Key, New Json)
+                        End If
+                        MRU_rows(Tag.Key).Add(hash, Tag.Value)
+                    Next
+                End If
+                For Each autotag As KeyValuePair(Of String, Json) In GetAutoTags(lvFileTags.Fullname(index))
+                    If Not MRU_rows.ContainsKey(autotag.Key) Then
+                        MRU_rows.Add(autotag.Key, New Json)
+                    End If
+                    If Not MRU_rows(autotag.Key).ContainsKey(hash) Then
+                        MRU_rows(autotag.Key).Add(hash, autotag.Value)
+                    End If
+                Next
             Next
-            UpdateTagsMRU()
-            Try
-                picPreview.Image = System.Drawing.Image.FromFile(filename)
-                picPreview.Visible = True
-            Catch ex As Exception
-                picPreview.Visible = False
-            End Try
-            Try
-                wmpPreview.URL = filename
-                wmpPreview.Visible = True
-            Catch ex As Exception
-                wmpPreview.Visible = False
-            End Try
+            For Each TagName As String In MRU_rows.Keys
+                Dim various As Boolean = False
+                Dim match_count As Integer = 0
+                Dim prev_tag As Json = Nothing
+                For Each index As Integer In lvFileTags.SelectedIndices
+                    Dim hash As String = lvFileTags.Hash(index)
+                    'We want to write the tag:  TagName, MRU_rows(TagName)(hash) for file with hash "hash"
+                    'Currently we have the tag: TagName, lvFileTags.Json(index)(Tagname) for file with hash lvFileTags.Hash(index)
+                    If (lvFileTags.Json(index) IsNot Nothing AndAlso lvFileTags.Json(index).ContainsKey(TagName) AndAlso
+                        MRU_rows(TagName).ContainsKey(hash)) Then
+                        If MRU_rows(TagName)(hash) = lvFileTags.Json(index)(TagName) Then
+                            match_count += 1
+                        End If
+                    End If
+                    If MRU_rows(TagName).ContainsKey(hash) Then
+                        If prev_tag Is Nothing Then
+                            prev_tag = MRU_rows(TagName)(hash)
+                        ElseIf prev_tag <> MRU_rows(TagName)(hash) Then
+                            various = True
+                        End If
+                    End If
+                Next
+                Dim checkstate As CheckState
+                If match_count = lvFileTags.SelectedIndices.Count Then
+                    checkstate = Windows.Forms.CheckState.Checked
+                ElseIf match_count = 0 Then
+                    checkstate = Windows.Forms.CheckState.Unchecked
+                Else
+                    checkstate = Windows.Forms.CheckState.Indeterminate
+                End If
+                If various Then
+                    lstTagsMRU.Items.Add(TagName + ": Various", checkstate)
+                Else
+                    If prev_tag Is Nothing Then prev_tag = New Json
+                    lstTagsMRU.Items.Add(New Json(New KeyValuePair(Of String, Json)(TagName, prev_tag)), checkstate)
+                End If
+            Next
+            txtTags.Text = ""
+            If lvFileTags.SelectedItems.Count = 1 Then
+                Try
+                    picPreview.Image = System.Drawing.Image.FromFile(lvFileTags.Fullname(lvFileTags.SelectedIndices(0)))
+                    picPreview.Visible = True
+                Catch ex As Exception
+                    picPreview.Visible = False
+                End Try
+                If picPreview.Visible = False Then
+                    Try
+                        wmpPreview.URL = lvFileTags.Fullname(lvFileTags.SelectedIndices(0))
+                        wmpPreview.Visible = True
+                    Catch ex As Exception
+                        wmpPreview.Visible = False
+                    End Try
+                Else
+                    wmpPreview.URL = ""
+                End If
+            End If
         Else
             txtTags.Text = ""
-            btnSaveTags.Enabled = False
         End If
     End Sub
+
+    'Private Sub UpdateTagsMRU()
+    '    If PriorityTagsMRU Then Return
+    '    Dim j As Json = Json.FromString(txtTags.Text)
+    '    For item_index As Integer = 0 To lstTagsMRU.Items.Count - 1
+    '        Dim j2 As Json = DirectCast(lstTagsMRU.Items(item_index), Json)
+    '        If j.ContainsKey(j2.Keys(0)) AndAlso j(j2.Keys(0)) = j2(j2.Keys(0)) Then
+    '            lstTagsMRU.SetItemCheckState(item_index, CheckState.Checked)
+    '        Else
+    '            'do nothing, this isn't perfect....
+    '        End If
+    '    Next
+    'End Sub
+
+    Private Function CheckJson() As Boolean
+        txtTags.ForeColor = Color.Black
+        Try
+            If txtTags.Text <> "" Then
+                Json.FromString(txtTags.Text)
+            End If
+            txtTags.ForeColor = Color.Green
+            btnSaveTags.Enabled = (lvFileTags.SelectedItems.Count > 0)
+            Return True
+        Catch ex As Exception
+            txtTags.ForeColor = Color.Red
+            btnSaveTags.Enabled = False
+            Return False
+        End Try
+    End Function
 
     Private Sub txtTags_TextChanged(sender As Object, e As EventArgs) Handles txtTags.TextChanged
         CheckJson()
-        UpdateTagsMRU()
     End Sub
 
-    Private Sub lstTags_SelectedIndexChanged(sender As Object, e As EventArgs) Handles lstTags.SelectedIndexChanged
-        Dim j As Json = Json.FromString(txtTags.Text)
-        For item_index As Integer = 0 To lstTags.Items.Count - 1
-            Dim j2 As Json = DirectCast(lstTags.Items(item_index), Json)
-            Dim item_string As String = j2.ToString
-            If lstTags.SelectedIndices.Contains(item_index) Then
-                If Not j.ContainsKey(j2.Keys(0)) Then
-                    j.Add(j2.Keys(0), j2(j2.Keys(0)))
-                Else
-                    j(j2.Keys(0)) = j2(j2.Keys(0))
-                End If
-            Else 'not selected
-                If j.ContainsKey(j2.Keys(0)) AndAlso j(j2.Keys(0)) = j2(j2.Keys(0)) Then
-                    j.Remove(j2.Keys(0))
-                End If
-            End If
-        Next
-        txtTags.Text = j.ToString
+    Private Sub btnDetailView_Click(sender As Object, e As EventArgs) Handles btnDetailView.Click
+        lvFileTags.View = View.Details
+    End Sub
+
+    Private Sub btnIconView_Click(sender As Object, e As EventArgs) Handles btnIconView.Click
+        lvFileTags.View = View.LargeIcon
     End Sub
 End Class
