@@ -1,8 +1,40 @@
 ﻿Public Class FileView
     Inherits ListView
 
+    Private WithEvents m_changeDelayTimer As Timer = Nothing
     Dim bw As Threading.Thread
     Property my_json As Json
+
+    Sub New()
+        If Not SystemInformation.TerminalServerSession Then
+            DoubleBuffered = True
+            SetStyle(ControlStyles.ResizeRedraw, True)
+        End If
+    End Sub
+
+    Protected Overrides Sub Dispose(disposing As Boolean)
+        If disposing AndAlso m_changeDelayTimer IsNot Nothing Then
+            RemoveHandler m_changeDelayTimer.Tick, AddressOf ChangeDelayTimerTick
+            m_changeDelayTimer.Dispose()
+        End If
+        MyBase.Dispose(disposing)
+    End Sub
+
+    Protected Overrides Sub OnSelectedIndexChanged(e As EventArgs)
+        If m_changeDelayTimer Is Nothing Then
+            m_changeDelayTimer = New Timer
+            AddHandler m_changeDelayTimer.Tick, AddressOf ChangeDelayTimerTick
+            m_changeDelayTimer.Interval = 40
+        End If
+        m_changeDelayTimer.Enabled = False
+        m_changeDelayTimer.Enabled = True
+        'MyBase.OnSelectedIndexChanged(e)
+    End Sub
+
+    Sub ChangeDelayTimerTick(sender As Object, e As EventArgs)
+        m_changeDelayTimer.Enabled = False
+        MyBase.OnSelectedIndexChanged(New EventArgs)
+    End Sub
 
     Function CacheShellIcon(ByVal argPath As String) As String
         Dim mKey As String = argPath
@@ -12,7 +44,18 @@
         End If
         If LargeImageList.Images.ContainsKey(mKey) = False Then
             Try
-                Me.InvokeEx(Sub() Me.LargeImageList.Images.Add(mKey, New System.Drawing.Bitmap(argPath)))
+                Dim b As New System.Drawing.Bitmap(argPath)
+                Dim bm_dest As Bitmap
+                If b.Width > b.Height Then
+                    bm_dest = New Bitmap(100, CInt(b.Height * 100 / b.Width))
+                Else
+                    bm_dest = New Bitmap(CInt(b.Width * 100 / b.Height), 100)
+                End If
+                Dim gr_dest As Graphics = Graphics.FromImage(bm_dest)
+                gr_dest.DrawImage(b, 0, 0, _
+                    bm_dest.Width + 1, _
+                    bm_dest.Height + 1)
+                Me.InvokeEx(Sub() Me.LargeImageList.Images.Add(mKey, bm_dest))
             Catch ex As Exception
                 Me.InvokeEx(Sub() Me.LargeImageList.Images.Add(mKey, GetShellIconAsImage(argPath)))
             End Try
@@ -24,8 +67,6 @@
         Dim fullname As String
         Dim text As String
         Dim hash As String
-        Dim json As Json
-        Dim json_string As String
         Dim IsDirectory As Boolean
     End Structure
 
@@ -37,7 +78,11 @@
 
     ReadOnly Property Json(index As Integer) As Json
         Get
-            Return CType(Me.Items(index).Tag, LviInfo).json
+            If my_json("Tags").ContainsKey(Hash(index)) Then
+                Return my_json("Tags")(Hash(index))
+            Else
+                Return Nothing
+            End If
         End Get
     End Property
 
@@ -57,8 +102,8 @@
         Dim lvi As New ListViewItem(l.text)
         lvi.ImageKey = CacheShellIcon(l.fullname)
         lvi.Tag = l
-        If l.json IsNot Nothing Then
-            lvi.SubItems.Add(l.json_string)
+        If Not l.IsDirectory AndAlso my_json("Tags").ContainsKey(l.hash) Then
+            lvi.SubItems.Add(my_json("Tags")(l.hash).ToString)
         End If
         Me.InvokeEx(Sub() Me.Items.Add(lvi))
     End Sub
@@ -100,12 +145,6 @@
                 l.fullname = f
                 l.IsDirectory = False
                 l.hash = SHA1CalcFile(f)
-                If json_files IsNot Nothing Then
-                    If json_files.ContainsKey(l.hash) Then
-                        l.json = json_files(l.hash)
-                        l.json_string = l.json.ToString
-                    End If
-                End If
                 AddLvi(l)
             Next
         End If
