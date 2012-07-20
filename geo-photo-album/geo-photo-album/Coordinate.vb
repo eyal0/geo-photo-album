@@ -184,7 +184,7 @@ Structure Coordinate
     ''' <remarks>
     ''' from view-source:https://google-developers.appspot.com/maps/documentation/javascript/examples/map-coordinates
     ''' </remarks>
-    Function ZoomToPoint(zoom As UInteger) As PointD
+    Function ZoomToPoint(zoom As Integer) As PointD
         Dim x As Double = 128 + LongitudeInDegrees * 256 / 360
         Dim siny As Double = Sin(LatitudeInRadians)
         If siny < -0.9999 Then siny = -0.9999

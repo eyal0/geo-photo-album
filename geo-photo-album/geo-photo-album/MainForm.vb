@@ -193,13 +193,15 @@ Class MainForm
                                                       End Function)
             Dim gps_samples As IEnumerable(Of GpsSample)
             gps_samples = gps_samples_enumerable.MergeSorted()
-            Dim filtered_gps_samples As IEnumerable(Of GpsSample)
-            filtered_gps_samples = gps_samples.FilterByPrevious(Function(x As GpsSample, y As GpsSample)
-                                                                    Return x.Coordinate.ZoomToPoint(0).Floor <> y.Coordinate.ZoomToPoint(0).Floor
-                                                                End Function)
-            For Each g As GpsSample In filtered_gps_samples
-                Debug.WriteLine(g)
-            Next
+            WriteGpsSamples(destination, gps_samples)
+            
+            'Dim filtered_gps_samples As IEnumerable(Of GpsSample)
+            'filtered_gps_samples = gps_samples.FilterByPrevious(Function(prev As GpsSample, current As GpsSample)
+            '                                                        Return prev.Coordinate.ZoomToPoint(0).Floor <> current.Coordinate.ZoomToPoint(0).Floor
+            '                                                    End Function)
+            'For Each g As GpsSample In filtered_gps_samples
+            '    Debug.WriteLine(g)
+            'Next
         Else 'it's a file destination
             Dim c As New Csv()
             For Each source As String In sources
@@ -218,6 +220,77 @@ Class MainForm
                    End Function)
             c.WriteFile(destination)
         End If
+    End Sub
+
+    Function ZPtoFilename(zoom As Integer, p As Point) As String
+        Const tile_size As Integer = 2048
+        Return IO.Path.Combine("tiles", zoom.ToString, "tile_" & zoom & "_" & p.X \ tile_size & "_" & p.Y \ tile_size & ".json")
+    End Function
+
+    Function GpsSampleToJsonString(sample_index As Integer, g As GpsSample) As String
+        Return ("[" &
+                sample_index & "," &
+                """" & g.Datetime.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffffzzz", Globalization.CultureInfo.InvariantCulture) & """," &
+                g.Coordinate.LatitudeInDegrees & "," &
+                g.Coordinate.LongitudeInDegrees &
+                "]")
+    End Function
+
+    Sub WriteGpsSamples(dest_dir As String, gps_samples As IEnumerable(Of GpsSample))
+        Dim sample_index As Integer = 0
+        Dim output_files As New Dictionary(Of String, IO.StreamWriter)
+        Dim prev As GpsSample? = Nothing
+        Dim tile_info As IO.StreamWriter = Nothing
+        Dim start_datetime As DateTimeOffset? = Nothing
+        Dim end_datetime As DateTimeOffset? = Nothing
+        For Each g As GpsSample In gps_samples
+            If start_datetime Is Nothing Then
+                start_datetime = g.Datetime
+            End If
+            end_datetime = g.Datetime
+            Dim z As Integer = 0
+            Do Until prev Is Nothing OrElse prev.Value.Coordinate.ZoomToPoint(z).Floor <> g.Coordinate.ZoomToPoint(z).Floor OrElse z > 19
+                z = z + 1
+            Loop
+            'need to output to this zoom level
+            Dim current_filename As String = IO.Path.Combine(dest_dir, ZPtoFilename(z, g.Coordinate.ZoomToPoint(z).Floor))
+            'output
+            If Not output_files.ContainsKey(current_filename) Then
+                If Not IO.Directory.Exists(IO.Path.GetDirectoryName(current_filename)) Then
+                    IO.Directory.CreateDirectory(IO.Path.GetDirectoryName(current_filename))
+                End If
+                output_files.Add(current_filename, IO.File.CreateText(current_filename))
+                output_files(current_filename).Write("{" & vbCrLf &
+                                                     "  ""path"" : [" & vbCrLf &
+                                                     "    " & GpsSampleToJsonString(sample_index, g))
+                If tile_info Is Nothing Then
+                    tile_info = IO.File.CreateText(IO.Path.Combine(dest_dir, "tile_info.json"))
+                    tile_info.Write("{" & vbCrLf &
+                                    "  ""tiles"" : [" & vbCrLf &
+                                    "    """ & ZPtoFilename(z, g.Coordinate.ZoomToPoint(z).Floor).Replace(IO.Path.DirectorySeparatorChar, "/") & """")
+                Else
+                    tile_info.Write("," & vbCrLf &
+                                    "    """ & ZPtoFilename(z, g.Coordinate.ZoomToPoint(z).Floor) & """")
+                End If
+            Else
+                output_files(current_filename).Write("," & vbCrLf &
+                                                     "    " & GpsSampleToJsonString(sample_index, g))
+            End If
+            sample_index += 1
+            prev = g
+        Next
+        For Each current_file As IO.StreamWriter In output_files.Values
+            current_file.Write(vbCrLf &
+                               "  ]" & vbCrLf &
+                               "}")
+            current_file.Close()
+        Next
+        tile_info.Write(vbCrLf &
+                        "  ]," & vbCrLf &
+                        "  ""start_datetime"" : """ & start_datetime.Value.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffffzzz", Globalization.CultureInfo.InvariantCulture) & """," & vbCrLf &
+                        "  ""end_datetime"" : """ & end_datetime.Value.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffffzzz", Globalization.CultureInfo.InvariantCulture) & """" & vbCrLf &
+                        "}")
+        tile_info.Close()
     End Sub
 #End Region
 

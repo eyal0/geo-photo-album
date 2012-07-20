@@ -57,6 +57,9 @@ Partial Class MainForm
         Me.btnDetailView = New System.Windows.Forms.Button()
         Me.btnFilterTags = New System.Windows.Forms.Button()
         Me.txtTagFilter = New System.Windows.Forms.TextBox()
+        Me.lvFileTags = New GeoPhotoAlbums.FileView()
+        Me.ColumnHeader1 = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
+        Me.ColumnHeader2 = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
         Me.LargeImageList = New System.Windows.Forms.ImageList(Me.components)
         Me.SmallImageList = New System.Windows.Forms.ImageList(Me.components)
         Me.SplitContainer5 = New System.Windows.Forms.SplitContainer()
@@ -65,9 +68,6 @@ Partial Class MainForm
         Me.lstTagsMRU = New System.Windows.Forms.CheckedListBox()
         Me.btnSaveTags = New System.Windows.Forms.Button()
         Me.txtTags = New System.Windows.Forms.TextBox()
-        Me.lvFileTags = New GeoPhotoAlbums.FileView()
-        Me.ColumnHeader1 = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
-        Me.ColumnHeader2 = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
         Me.MainTab.SuspendLayout()
         Me.TabSortCsv.SuspendLayout()
         Me.TabFilterCsv.SuspendLayout()
@@ -268,7 +268,7 @@ Partial Class MainForm
         Me.txtFilterDest.Name = "txtFilterDest"
         Me.txtFilterDest.Size = New System.Drawing.Size(918, 20)
         Me.txtFilterDest.TabIndex = 12
-        Me.txtFilterDest.Text = "C:\Users\Eyal\Documents\coding\geo-photo-album\filtered_csv"
+        Me.txtFilterDest.Text = "E:\Users\Eyal\Pictures\World Tour 2011-2012\output"
         '
         'btnFilterDestDir
         '
@@ -317,7 +317,7 @@ Partial Class MainForm
         Me.txtFilterSrc.Name = "txtFilterSrc"
         Me.txtFilterSrc.Size = New System.Drawing.Size(918, 20)
         Me.txtFilterSrc.TabIndex = 7
-        Me.txtFilterSrc.Text = "C:\Users\Eyal\Documents\coding\geo-photo-album\sorted_csv"
+        Me.txtFilterSrc.Text = "E:\Users\Eyal\Pictures\World Tour 2011-2012\sorted_csv"
         '
         'TabTagFiles
         '
@@ -470,6 +470,33 @@ Partial Class MainForm
         Me.txtTagFilter.TabIndex = 0
         Me.txtTagFilter.Text = "E:\Users\Eyal\Pictures\World Tour 2011-2012\Thailand\Bangkok"
         '
+        'lvFileTags
+        '
+        Me.lvFileTags.Columns.AddRange(New System.Windows.Forms.ColumnHeader() {Me.ColumnHeader1, Me.ColumnHeader2})
+        Me.lvFileTags.Dock = System.Windows.Forms.DockStyle.Fill
+        Me.lvFileTags.FullRowSelect = True
+        Me.lvFileTags.GridLines = True
+        Me.lvFileTags.LargeImageList = Me.LargeImageList
+        Me.lvFileTags.Location = New System.Drawing.Point(0, 0)
+        Me.lvFileTags.my_json = Nothing
+        Me.lvFileTags.Name = "lvFileTags"
+        Me.lvFileTags.ShowGroups = False
+        Me.lvFileTags.Size = New System.Drawing.Size(649, 523)
+        Me.lvFileTags.SmallImageList = Me.SmallImageList
+        Me.lvFileTags.TabIndex = 0
+        Me.lvFileTags.UseCompatibleStateImageBehavior = False
+        Me.lvFileTags.View = System.Windows.Forms.View.Details
+        '
+        'ColumnHeader1
+        '
+        Me.ColumnHeader1.Text = "File"
+        Me.ColumnHeader1.Width = 100
+        '
+        'ColumnHeader2
+        '
+        Me.ColumnHeader2.Text = "Tags"
+        Me.ColumnHeader2.Width = 300
+        '
         'LargeImageList
         '
         Me.LargeImageList.ColorDepth = System.Windows.Forms.ColorDepth.Depth32Bit
@@ -533,7 +560,6 @@ Partial Class MainForm
         Me.lstTagsMRU.IntegralHeight = False
         Me.lstTagsMRU.Location = New System.Drawing.Point(3, 104)
         Me.lstTagsMRU.Name = "lstTagsMRU"
-        Me.lstTagsMRU.SelectionMode = System.Windows.Forms.SelectionMode.None
         Me.lstTagsMRU.Size = New System.Drawing.Size(478, 210)
         Me.lstTagsMRU.TabIndex = 2
         '
@@ -557,33 +583,6 @@ Partial Class MainForm
         Me.txtTags.Name = "txtTags"
         Me.txtTags.Size = New System.Drawing.Size(424, 93)
         Me.txtTags.TabIndex = 0
-        '
-        'lvFileTags
-        '
-        Me.lvFileTags.Columns.AddRange(New System.Windows.Forms.ColumnHeader() {Me.ColumnHeader1, Me.ColumnHeader2})
-        Me.lvFileTags.Dock = System.Windows.Forms.DockStyle.Fill
-        Me.lvFileTags.FullRowSelect = True
-        Me.lvFileTags.GridLines = True
-        Me.lvFileTags.LargeImageList = Me.LargeImageList
-        Me.lvFileTags.Location = New System.Drawing.Point(0, 0)
-        Me.lvFileTags.my_json = Nothing
-        Me.lvFileTags.Name = "lvFileTags"
-        Me.lvFileTags.ShowGroups = False
-        Me.lvFileTags.Size = New System.Drawing.Size(649, 523)
-        Me.lvFileTags.SmallImageList = Me.SmallImageList
-        Me.lvFileTags.TabIndex = 0
-        Me.lvFileTags.UseCompatibleStateImageBehavior = False
-        Me.lvFileTags.View = System.Windows.Forms.View.Details
-        '
-        'ColumnHeader1
-        '
-        Me.ColumnHeader1.Text = "File"
-        Me.ColumnHeader1.Width = 100
-        '
-        'ColumnHeader2
-        '
-        Me.ColumnHeader2.Text = "Tags"
-        Me.ColumnHeader2.Width = 300
         '
         'MainForm
         '

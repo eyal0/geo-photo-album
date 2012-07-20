@@ -18,6 +18,7 @@ Module EnumerableExtensions
     <Extension()>
     Iterator Function MergeSorted(Of Tvalue As IComparable(Of Tvalue))(e As IEnumerable(Of IEnumerable(Of Tvalue))) As IEnumerable(Of Tvalue)
         Dim inputs As List(Of Tuple(Of Tvalue, IEnumerator(Of Tvalue)))
+        'we use SelectMany so that we can yield nothing if the csv is empty
         inputs = e.SelectMany(Iterator Function(x As IEnumerable(Of Tvalue))
                                   Dim x1 As IEnumerator(Of Tvalue) = x.GetEnumerator
                                   If x1.MoveNext Then

@@ -161,6 +161,7 @@
             bw = New Threading.Thread(New Threading.ParameterizedThreadStart(Sub(o As Object)
                                                                                  UpdateFileTags(DirectCast(o, String))
                                                                              End Sub))
+            bw.IsBackground = True
             bw.Start(value)
         End Set
     End Property
