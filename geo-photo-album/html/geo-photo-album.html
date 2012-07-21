@@ -9,26 +9,28 @@
       html, body {
         margin: 0;
         padding: 0;
-        height: 100%;
+        height: 100%
       }
       #map_canvas {
         margin: 0;
         padding: 0;
         height: 80%
-      };
+      }
+      body {
+        padding: 10px;
+        font-size: 62.5%;
+        font-family: "Trebuchet MS", "Helvetica", "Arial",  "Verdana", "sans-serif";
+      }
     </style>
-    <link rel="stylesheet" href="http://jqueryui.com/themes/base/jquery.ui.all.css">
-    <!-- <script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.5.min.js" type="text/javascript"></script> -->
+    <link rel="stylesheet" href="http://jqueryui.com/themes/ui-lightness/jquery.ui.all.css">
     <script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?sensor=false"></script>
-    <!-- <script type="text/javascript" src=" https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script> -->
-    <!-- <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.21/jquery-ui.min.js" type="text/javascript"></script> -->
-    <script src="http://jqueryui.com/jquery-1.7.2.js"></script>
-    <script src="http://jqueryui.com/ui/jquery.ui.core.js"></script>
-    <script src="http://jqueryui.com/ui/jquery.ui.widget.js"></script>
-    <script src="http://jqueryui.com/ui/jquery.ui.mouse.js"></script>
+    <script type="text/javascript" src="http://jqueryui.com/jquery-1.7.2.js"></script>
+    <script type="text/javascript" src="http://jqueryui.com/ui/jquery.ui.core.js"></script>
+    <script type="text/javascript" src="http://jqueryui.com/ui/jquery.ui.widget.js"></script>
+    <script type="text/javascript" src="http://jqueryui.com/ui/jquery.ui.mouse.js"></script>
     <script src="http://jqueryui.com/ui/jquery.ui.slider.js"></script>
-    <script src="http://jqueryui.com/ui/jquery.ui.datepicker.js"></script>
-    <link rel="stylesheet" href="http://jqueryui.com/demos/demos.css">
+    <script type="text/javascript" src="http://jqueryui.com/ui/jquery.ui.datepicker.js"></script>
+    <!-- <link rel="stylesheet" href="http://jqueryui.com/demos/demos.css"> -->
     <script type="text/javascript">
       var map;
       var routePolyline;
@@ -75,8 +77,35 @@
           return point;
         };
 
-        function load_polyline() {
-          
+        function mergeSort(A, B, compare, perElem) {
+          var ret = [];
+          var i = 0;
+          var j = 0;
+          while(i < A.length && j < B.length) {
+            if(compare(A[i], B[j]) <= 0) {
+              ret.push(A[i]);
+              perElem(A[i]);
+              i++;
+            } else {
+              ret.push(B[j]);
+              perElem(B[j]);
+              j++;
+            }
+          }
+          while(i < A.length) {
+            ret.push(A[i]);
+            perElem(A[i]);
+            i++;
+          }
+          while(j < B.length) {
+            ret.push(B[j]);
+            perElem(B[i]);
+            j++;
+          }
+          return(ret);
+        }
+        
+        function load_polyline(force) {
           if(tilesLoaded > 40) {
             console.debug("reset tiles")
             $.each(tileFiles, function (key, val) {
@@ -107,6 +136,7 @@
                 if(!tileFiles.hasOwnProperty(tile_filename) || tileFiles[tile_filename]) {
                   continue;
                 }
+                force = false; //the JSON call will eventually redraw the route
                 tileFiles[tile_filename] = 1;
                 $.getJSON(tile_filename, function(data) {
                   $.each(data, function(key, val) {
@@ -116,39 +146,93 @@
                       var gpsPoints_index = 0;
                       var newGpsPoints = [];
                       var newPath = [];
+                      var newBoundsWest=180, newBoundsNorth=-90, newBoundsSouth=90, newBoundsEast=-180;
+                      var start_time = $("#start_datepicker").datepicker("getDate").getTime();
+                      var end_time = $("#end_datepicker").datepicker("getDate").getTime();
                       while(new_index < val.length && gpsPoints_index < gpsPoints.length) {
                         if(val[new_index][0] < gpsPoints[gpsPoints_index][0]) {
                           newGpsPoints.push(val[new_index]);
-                          newPath.push(new google.maps.LatLng(val[new_index][2], val[new_index][3]));
+                          var current_time = new Date(val[new_index][1]).getTime();
+                          if(start_time <= current_time && current_time < end_time) {
+                            newPath.push(new google.maps.LatLng(val[new_index][2], val[new_index][3]));
+                            newBoundsSouth = Math.min(val[new_index][2], newBoundsSouth);
+                            newBoundsNorth = Math.max(val[new_index][2], newBoundsNorth);
+                            newBoundsWest  = Math.min(val[new_index][3], newBoundsWest);
+                            newBoundsEast  = Math.max(val[new_index][3], newBoundsEast);
+                          }
                           new_index++;
-                        } else if(val[new_index][0] > gpsPoints[gpsPoints_index][0]) {
+                        } else /*if(val[new_index][0] > gpsPoints[gpsPoints_index][0]) */ {
                           newGpsPoints.push(gpsPoints[gpsPoints_index]);
-                          newPath.push(new google.maps.LatLng(gpsPoints[gpsPoints_index][2], gpsPoints[gpsPoints_index][3]));
+                          var current_time = new Date(gpsPoints[gpsPoints_index][1]).getTime();
+                          if(start_time <= current_time && current_time < end_time) {
+                            newPath.push(new google.maps.LatLng(gpsPoints[gpsPoints_index][2], gpsPoints[gpsPoints_index][3]));
+                            newBoundsSouth = Math.min(gpsPoints[gpsPoints_index][2], newBoundsSouth);
+                            newBoundsNorth = Math.max(gpsPoints[gpsPoints_index][2], newBoundsNorth);
+                            newBoundsWest  = Math.min(gpsPoints[gpsPoints_index][3], newBoundsWest);
+                            newBoundsEast  = Math.max(gpsPoints[gpsPoints_index][3], newBoundsEast);
+                          }
                           gpsPoints_index++;
-                        } else {
+                        }/* else {
                           //shouldn't arrive here ever
                           newGpsPoints.push(gpsPoints[gpsPoints_index]); //whichever
-                          newPath.push(new google.maps.LatLng(gpsPoints[gpsPoints_index][2], gpsPoints[gpsPoints_index][3])); //whichever
+                          if(start_time <= current_time && current_time < end_time) {
+                            newPath.push(new google.maps.LatLng(gpsPoints[gpsPoints_index][2], gpsPoints[gpsPoints_index][3])); //whichever
+                          }
                           gpsPoints_index++;
                           new_index++;
-                        }
+                        }*/
                       }
                       while(new_index < val.length) {
                         newGpsPoints.push(val[new_index]);
-                        newPath.push(new google.maps.LatLng(val[new_index][2], val[new_index][3]));
+                        var current_time = new Date(val[new_index][1]).getTime();
+                        if(start_time <= current_time && current_time < end_time) {
+                          newPath.push(new google.maps.LatLng(val[new_index][2], val[new_index][3]));
+                          newBoundsSouth = Math.min(val[new_index][2], newBoundsSouth);
+                          newBoundsNorth = Math.max(val[new_index][2], newBoundsNorth);
+                          newBoundsWest  = Math.min(val[new_index][3], newBoundsWest);
+                          newBoundsEast  = Math.max(val[new_index][3], newBoundsEast);
+                        }
                         new_index++;
                       }
                       while(gpsPoints_index < gpsPoints.length) {
                         newGpsPoints.push(gpsPoints[gpsPoints_index]);
-                        newPath.push(new google.maps.LatLng(gpsPoints[gpsPoints_index][2], gpsPoints[gpsPoints_index][3]));
+                        var current_time = new Date(gpsPoints[gpsPoints_index][1]).getTime();
+                        if(start_time <= current_time && current_time < end_time) {
+                          newPath.push(new google.maps.LatLng(gpsPoints[gpsPoints_index][2], gpsPoints[gpsPoints_index][3]));
+                          newBoundsSouth = Math.min(gpsPoints[gpsPoints_index][2], newBoundsSouth);
+                          newBoundsNorth = Math.max(gpsPoints[gpsPoints_index][2], newBoundsNorth);
+                          newBoundsWest  = Math.min(gpsPoints[gpsPoints_index][3], newBoundsWest);
+                          newBoundsEast  = Math.max(gpsPoints[gpsPoints_index][3], newBoundsEast);
+                        }
                         gpsPoints_index++;
                       }
                       gpsPoints = newGpsPoints;
                       routePolyline.setPath(newPath);
+                      if($("#auto_zoom")[0].checked)
+                        map.fitBounds(new google.maps.LatLngBounds(new google.maps.LatLng(newBoundsSouth, newBoundsWest), new google.maps.LatLng(newBoundsNorth, newBoundsEast)));
                   });
                 })
               }
             }
+          }
+          if(force) { //we must re-draw the route because there were no JSON calls that will do it.
+            var newPath = [];
+            var newBoundsWest=180, newBoundsNorth=-90, newBoundsSouth=90, newBoundsEast=-180;
+            var start_time = $("#start_datepicker").datepicker("getDate").getTime();
+            var end_time = $("#end_datepicker").datepicker("getDate").getTime();
+            for(var gpsPoints_index = 0; gpsPoints_index < gpsPoints.length; gpsPoints_index++) {
+              var current_time = new Date(gpsPoints[gpsPoints_index][1]).getTime();
+              if(start_time <= current_time && current_time < end_time) {
+                newPath.push(new google.maps.LatLng(gpsPoints[gpsPoints_index][2], gpsPoints[gpsPoints_index][3]));
+                newBoundsSouth = Math.min(gpsPoints[gpsPoints_index][2], newBoundsSouth);
+                newBoundsNorth = Math.max(gpsPoints[gpsPoints_index][2], newBoundsNorth);
+                newBoundsWest  = Math.min(gpsPoints[gpsPoints_index][3], newBoundsWest);
+                newBoundsEast  = Math.max(gpsPoints[gpsPoints_index][3], newBoundsEast);
+              }
+            }
+            routePolyline.setPath(newPath);
+            if($("#auto_zoom")[0].checked)
+              map.fitBounds(new google.maps.LatLngBounds(new google.maps.LatLng(newBoundsSouth, newBoundsWest), new google.maps.LatLng(newBoundsNorth, newBoundsEast)));
           }
         }
         var polyOptions = {
@@ -172,41 +256,103 @@
             }
           });
           google.maps.event.addListener(map, 'bounds_changed', load_polyline);
-          $(function() {
-            var step = 1000*60*60*24;
-            var max = Math.floor(endDateTime.getTime() / step) * step; //max is multiple of step
-            var testDate = new Date(max);
-            if(testDate.getDate() != endDateTime.getDate() || testDate.getMonth() != endDateTime.getMonth() || testDate.getYear() != endDateTime.getYear())
-              max += step; //max is still multiple of step
-            $("#date_slider").slider({animate: true, step: 1000*60*60*24, min: startDateTime.getTime(), max: endDateTime.getTime(), values: [startDateTime.getTime(), endDateTime.getTime()],
+          { 
+            { //extend the slider
+              $.ui.slider.prototype._slide = function ( event, index, newVal ) {
+                var otherVal,
+                  newValues,
+                  allowed;
+
+                if ( this.options.values && this.options.values.length ) {
+                  otherVal = this.values( index ? 0 : 1 );
+                  if ( newVal !== this.values( index ) ) {
+                    newValues = this.values();
+                    newValues[ index ] = newVal;
+                    // A slide can be canceled by returning false from the slide callback
+                    allowed = this._trigger( "slide", event, {
+                      handle: this.handles[ index ],
+                      value: newVal,
+                      values: newValues
+                    } );
+                    otherVal = this.values( index ? 0 : 1 );
+                    if ( allowed !== false ) {
+                      this.values( index, newVal, true );
+                    }
+                  }
+                } else {
+                  if ( newVal !== this.value() ) {
+                    // A slide can be canceled by returning false from the slide callback
+                    allowed = this._trigger( "slide", event, {
+                      handle: this.handles[ index ],
+                      value: newVal
+                    } );
+                    if ( allowed !== false ) {
+                      this.value( newVal );
+                    }
+                  }
+                }
+              }
+            }
+            Date.prototype.clone = function() { return new Date(this.getTime()); };
+            Date.prototype.truncateDate = function() { this.setHours(0); this.setMinutes(0); this.setSeconds(0); this.setMilliseconds(0); };
+            Date.prototype.addDays = function(days) { this.setDate(this.getDate() + days); return this; }
+            Date.prototype.daysUntil = function(targetDate) { //returns integer number of days, as if the H:M:S didn't exist
+              var days = Math.floor((targetDate.getTime() - this.getTime())/1000/60/60/24); //a guess
+              var testDate = startDate.clone().addDays(days);
+              while(testDate.getDate() != targetDate.getDate() || testDate.getMonth() != targetDate.getMonth() || testDate.getYear() != targetDate.getYear()) {
+                if(testDate < targetDate) {
+                  days++;
+                } else {
+                  days--;
+                }
+                testDate = startDate.clone().addDays(days);
+              }
+              return(days);
+            }
+            var startDate = startDateTime.clone();
+            startDate.truncateDate();
+            var endDate = endDateTime.clone();
+            endDate.truncateDate();
+            var days = startDate.daysUntil(endDate);
+            $("#date_slider").slider({animate: true, "step": 1, min: 0, max: days+1, values: [0, days+1], range: true,
                                       slide: function(event, ui) {
-                                        if($("#start_datepicker").datepicker("getDate").getTime() != $(this).slider('values', 0))
-                                          $("#start_datepicker").datepicker("setDate", new Date($(this).slider('values', 0)));
-                                        if($("#end_datepicker").datepicker("getDate").getTime() != $(this).slider('values', 1))
-                                          $("#end_datepicker").datepicker("setDate", new Date($(this).slider('values', 1)));
-                                      },
-                                      change: function(event, ui) {
-                                        if($("#start_datepicker").datepicker("getDate").getTime() != $(this).slider('values', 0))
-                                          $("#start_datepicker").datepicker("setDate", new Date($(this).slider('values', 0)));
-                                        if($("#end_datepicker").datepicker("getDate").getTime() != $(this).slider('values', 1))
-                                          $("#end_datepicker").datepicker("setDate", new Date($(this).slider('values', 1)));
+                                        if(ui.values[0] >= ui.values[1]) {
+                                          if(ui.handle == $("#date_slider a")[0]) {
+                                            if(ui.value == days+1) return(false);
+                                            $("#date_slider").slider("values", 1, ui.value+1);
+                                            ui.values[0] = ui.value;
+                                            ui.values[1] = ui.value+1;
+                                          } else {
+                                            if(ui.value == 0) return(false);
+                                            $("#date_slider").slider("values", 0, ui.value-1);
+                                            ui.values[0] = ui.value-1;
+                                            ui.values[1] = ui.value;
+                                          }
+                                        }
+                                        if($("#start_datepicker").datepicker("getDate").getTime() != startDate.clone().addDays(ui.values[0]).getTime())
+                                          $("#start_datepicker").datepicker("setDate", startDate.clone().addDays(ui.values[0]));
+                                        if($("#end_datepicker").datepicker("getDate").getTime() != startDate.clone().addDays(ui.values[1]-1).getTime())
+                                          $("#end_datepicker").datepicker("setDate", startDate.clone().addDays(ui.values[1]-1));
+                                        load_polyline(true);
                                       }
                                      });
             $("#start_datepicker").datepicker({appendText: "(yyyy-mm-dd)", dateFormat: "yy-mm-dd", minDate: startDateTime, maxDate: endDateTime, defaultDate: startDateTime,
                                                onSelect: function(dateText, inst) {
-                                                 if($("#start_datepicker").datepicker("getDate").getTime() != $("#date_slider").slider('values', 0))
-                                                   $("#date_slider").slider("values", 0, $("#start_datepicker").datepicker("getDate").getTime());
+                                                 if($("#start_datepicker").datepicker("getDate").getTime() != startDate.clone().addDays($("#date_slider").slider('values', 0)).getTime())
+                                                   $("#date_slider").slider("values", 0, startDateTime.daysUntil($("#start_datepicker").datepicker("getDate")));
+                                                 load_polyline(true);
                                                }
                                               });
             $("#start_datepicker").datepicker("setDate", startDateTime);
             $("#end_datepicker").datepicker({appendText: "(yyyy-mm-dd)", dateFormat: "yy-mm-dd", minDate: startDateTime, maxDate: endDateTime, defaultDate: endDateTime,
                                              onSelect: function(dateText, inst) {
-                                                 if($("#end_datepicker").datepicker("getDate").getTime() != $("#date_slider").slider('values', 0))
-                                                   $("#date_slider").slider("values", 1, $("#end_datepicker").datepicker("getDate").getTime());
-                                             }
+                                               if($("#end_datepicker").datepicker("getDate").getTime() != startDate.clone().addDays($("#date_slider").slider('values', 1)-1).getTime())
+                                                 $("#date_slider").slider("values", 1, startDateTime.daysUntil($("#end_datepicker").datepicker("getDate"))+1);
+                                               load_polyline(true);
+                                             },
                                             });
             $("#end_datepicker").datepicker("setDate", endDateTime);
-          });
+          }
         });
       }
       $(document).ready(initialize);
@@ -215,11 +361,10 @@
   <body>
     <div id="map_canvas"></div>
     <div class="demo">
-      <div id="date_slider" class="ui-slider ui-slider-horizontal ui-widget ui-widget-content ui-corner-all">
-        <a class="ui-slider-handle ui-state-default ui-corner-all" href="http://jqueryui.com/demos/slider/default.html#" style="left: 0%; "></a>
-      </div>
+      <div id="date_slider"></div>
       <input type="text" id="start_datepicker">
       <input type="text" id="end_datepicker">
+      <label for="auto_zoom">Auto-Zoom</label><input type="checkbox" id="auto_zoom">
     </div>
   </body>
 </html>
