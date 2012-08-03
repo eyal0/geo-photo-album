@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Google Maps JavaScript API v3 Example: Map Simple</title>
+    <title>Geo Photo Album</title>
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta charset="UTF-8">
@@ -262,7 +262,7 @@
 
         return(dataURL); //.replace(/^data:image\/(png|jpg);base64,/, "");
       }
-
+      
       function markerAnimation(animation_id, currentPhoto) {
         if(animation_id==101) {
           $('div[style*="z-index: ' + (1000 + currentPhoto[1]) + ';"] img').removeClass("fadeOut").addClass("fadeIn");
@@ -420,14 +420,35 @@
         }
       }
 
+      function getURLParameter(url, name) {
+        var search = /[^?](.*)/.exec(url)[1] || "";
+        return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search)||[,""])[1].replace(/\+/g, '%20'))||null;
+      }
+
+      function UrlToMapOptions(location) {
+        var mapOptions = {};
+        
+        var t = getURLParameter(location, "t") || "m";
+        if(t == "h") mapOptions.mapTypeId = google.maps.MapTypeId.HYBRID;
+        if(t == "m") mapOptions.mapTypeId = google.maps.MapTypeId.ROADMAP;
+        if(t == "k") mapOptions.mapTypeId = google.maps.MapTypeId.SATELLITE;
+        if(t == "p") mapOptions.mapTypeId = google.maps.MapTypeId.TERRAIN;
+        
+        var z = getURLParameter(location, "z") || "0";
+        mapOptions.zoom = +z;
+        
+        var ll = getURLParameter(location, "ll") || "0,0";
+        var ll = /(.*),(.*)/.exec(ll);
+        if(ll && !isNaN(ll[1]) && !isNaN(ll[2])) {
+          mapOptions.center = new google.maps.LatLng(+ll[1],+ll[2]);
+        } else {
+          mapOptions.center = new google.maps.LatLng(0,0);
+        }
+        return(mapOptions);
+      }
+      
       function initialize() {
-        var myOptions = {
-          zoom: 0,
-          center: new google.maps.LatLng(0, 0),
-          mapTypeId: google.maps.MapTypeId.ROADMAP
-        };
-        map = new google.maps.Map(document.getElementById('map_canvas'),
-            myOptions);
+        map = new google.maps.Map(document.getElementById('map_canvas'), UrlToMapOptions(location.href));
         
         var gpsPath;
         var polyOptions = {
