@@ -2,6 +2,25 @@
     Private Fields_ As New List(Of String)
     Private Rows_ As New List(Of IDictionary(Of String, String))
 
+    Public Function AddField(s As String) As Boolean
+        Dim already_has As Boolean = Fields_.Contains(s)
+        If Not already_has Then
+            Fields_.Add(s)
+        End If
+        Return already_has
+    End Function
+
+    Public Function AddFields(fields As IEnumerable(Of String)) As Integer
+        Dim ret As Integer = 0
+        For Each field As String In fields
+            If Not Fields_.Contains(field) Then
+                ret += 1
+                Fields_.Add(field)
+            End If
+        Next
+        Return ret
+    End Function
+
     Sub Sort(Of T As IComparable(Of T))(keySelector As Func(Of IDictionary(Of String, String), T))
         Rows_ = Rows_.OrderBy(Of T)(keySelector).ToList
     End Sub
@@ -72,9 +91,9 @@
         Do While lines1.MoveNext
             line = lines1.Current
             Dim values As New List(Of String)(line.Split(","c))
-            Debug.Assert(values.Count = Fields_.Count)
+            Debug.Assert(values.Count = new_fields.Count)
             Dim new_row As New Dictionary(Of String, String)
-            For i As Integer = 0 To Fields_.Count - 1
+            For i As Integer = 0 To new_fields.Count - 1
                 new_row.Add(new_fields(i), values(i))
             Next
             Rows_.Add(new_row)

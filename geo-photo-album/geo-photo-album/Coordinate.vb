@@ -121,19 +121,23 @@ Structure Coordinate
     Public Overrides Function GetHashCode() As Integer
         Return LatitudeInRadians.GetHashCode Xor LongitudeInRadians.GetHashCode
     End Function
+
+    Private Const EARTH_MAJOR_SEMI_AXIS As Double = 6378137
+    Private Const EARTH_MINOR_SEMI_AXIS As Double = 6356752.3142
+
     ''' <summary>
     ''' Compute the distance along a great circle between two coordinates on Earth.
     ''' </summary>
     ''' <param name="other">Other coordinate</param>
     ''' <returns>Distance in meters</returns>
-    ''' <remarks></remarks>
+    ''' <remarks>from http://www.movable-type.co.uk/scripts/latlong-vincenty.html </remarks>
     Public Function Distance(other As Coordinate) As Double
         If Me.Equals(other) Then
             Return 0
         End If
-        Dim a As Double = 6378137
-        Dim b As Double = 6356752.3142
-        Dim f As Double = 1 / 298.257223563
+        Dim a As Double = EARTH_MAJOR_SEMI_AXIS
+        Dim b As Double = EARTH_MINOR_SEMI_AXIS
+        Dim f As Double = (a - b) / a
         Dim l As Double = other.LongitudeInRadians - Me.LongitudeInRadians
         Dim u1 As Double = Atan((1 - f) * Tan(Me.LatitudeInRadians))
         Dim u2 As Double = Atan((1 - f) * Tan(other.LatitudeInRadians))
@@ -202,6 +206,10 @@ Structure Coordinate
     ''' <remarks>from http://williams.best.vwh.net/avform.htm#Intermediate</remarks>
     Function IntermediatePoint(other As Coordinate, fraction As Double) As Coordinate
         Dim d As Double = Me.Distance(other)
+        If d = 0 Then
+            Return Me
+        End If
+        d /= EARTH_MAJOR_SEMI_AXIS 'beacuse we expect a distance that is no greater than 2*pi
         Dim A As Double = Sin((1 - fraction) * d) / Sin(d)
         Dim B As Double = Sin(fraction * d) / Sin(d)
         Dim x As Double = (A * Cos(Me.LatitudeInRadians) * Cos(Me.LongitudeInRadians) +

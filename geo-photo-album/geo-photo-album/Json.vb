@@ -84,25 +84,25 @@ Public Class Json
 
     Private ReadOnly Property ToObject As IDictionary(Of String, Json)
         Get
-            Return CType(json_, Dictionary(Of String, Json))
+            Return DirectCast(json_, Dictionary(Of String, Json))
         End Get
     End Property
 
     Private ReadOnly Property ToArray As IList(Of Json)
         Get
-            Return CType(json_, List(Of Json))
+            Return DirectCast(json_, List(Of Json))
         End Get
     End Property
 
-    Private ReadOnly Property ToBoolean As Boolean
+    Public ReadOnly Property ToBoolean As Boolean
         Get
-            Return CType(json_, Boolean)
+            Return DirectCast(json_, Boolean)
         End Get
     End Property
 
-    Private ReadOnly Property ToDouble As Double
+    Public ReadOnly Property ToDouble As Double
         Get
-            Return CType(json_, Double)
+            Return DirectCast(json_, Double)
         End Get
     End Property
 
@@ -115,7 +115,7 @@ Public Class Json
                                                                         Return ""
                                                                     End Function))
         Else
-            Return CStr(json_)
+            Return DirectCast(json_, String)
         End If
     End Function
 
@@ -638,7 +638,11 @@ Public Class Json
     End Sub
 
     Public Overrides Function Equals(obj As Object) As Boolean
-        Return Me = CType(obj, Json)
+        If TypeOf obj Is Json Then
+            Return Me = CType(obj, Json)
+        Else
+            Return False
+        End If
     End Function
 
     Private Function CombineHash(e As IEnumerable(Of Integer)) As Integer

@@ -68,6 +68,17 @@ Partial Class MainForm
         Me.lstTagsMRU = New System.Windows.Forms.CheckedListBox()
         Me.btnSaveTags = New System.Windows.Forms.Button()
         Me.txtTags = New System.Windows.Forms.TextBox()
+        Me.TabOutputFiles = New System.Windows.Forms.TabPage()
+        Me.btnOutput = New System.Windows.Forms.Button()
+        Me.btnOutputDestFile = New System.Windows.Forms.Button()
+        Me.lblOutputDest = New System.Windows.Forms.Label()
+        Me.txtOutputDest = New System.Windows.Forms.TextBox()
+        Me.btnOutputDestDir = New System.Windows.Forms.Button()
+        Me.btnOutputSrcDir = New System.Windows.Forms.Button()
+        Me.btnOutputSrcFile = New System.Windows.Forms.Button()
+        Me.lblOutputSrc = New System.Windows.Forms.Label()
+        Me.txtOutputSrc = New System.Windows.Forms.TextBox()
+        Me.BackgroundWorker1 = New System.ComponentModel.BackgroundWorker()
         Me.MainTab.SuspendLayout()
         Me.TabSortCsv.SuspendLayout()
         Me.TabFilterCsv.SuspendLayout()
@@ -90,6 +101,7 @@ Partial Class MainForm
         Me.SplitContainer5.SuspendLayout()
         CType(Me.picPreview, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.wmpPreview, System.ComponentModel.ISupportInitialize).BeginInit()
+        Me.TabOutputFiles.SuspendLayout()
         Me.SuspendLayout()
         '
         'MainTab
@@ -97,6 +109,7 @@ Partial Class MainForm
         Me.MainTab.Controls.Add(Me.TabSortCsv)
         Me.MainTab.Controls.Add(Me.TabFilterCsv)
         Me.MainTab.Controls.Add(Me.TabTagFiles)
+        Me.MainTab.Controls.Add(Me.TabOutputFiles)
         Me.MainTab.Dock = System.Windows.Forms.DockStyle.Fill
         Me.MainTab.Location = New System.Drawing.Point(0, 0)
         Me.MainTab.Name = "MainTab"
@@ -136,7 +149,7 @@ Partial Class MainForm
         'btnSortDestFile
         '
         Me.btnSortDestFile.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.btnSortDestFile.Location = New System.Drawing.Point(1009, 35)
+        Me.btnSortDestFile.Location = New System.Drawing.Point(1023, 35)
         Me.btnSortDestFile.Name = "btnSortDestFile"
         Me.btnSortDestFile.Size = New System.Drawing.Size(55, 23)
         Me.btnSortDestFile.TabIndex = 7
@@ -146,7 +159,7 @@ Partial Class MainForm
         'btnSortSrcDir
         '
         Me.btnSortSrcDir.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.btnSortSrcDir.Location = New System.Drawing.Point(1070, 6)
+        Me.btnSortSrcDir.Location = New System.Drawing.Point(1084, 6)
         Me.btnSortSrcDir.Name = "btnSortSrcDir"
         Me.btnSortSrcDir.Size = New System.Drawing.Size(55, 23)
         Me.btnSortSrcDir.TabIndex = 6
@@ -166,16 +179,16 @@ Partial Class MainForm
         '
         Me.txtSortDest.Anchor = CType(((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Left) _
             Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.txtSortDest.Location = New System.Drawing.Point(85, 37)
+        Me.txtSortDest.Location = New System.Drawing.Point(74, 37)
         Me.txtSortDest.Name = "txtSortDest"
-        Me.txtSortDest.Size = New System.Drawing.Size(918, 20)
+        Me.txtSortDest.Size = New System.Drawing.Size(943, 20)
         Me.txtSortDest.TabIndex = 4
         Me.txtSortDest.Text = "C:\Users\Eyal\Documents\coding\geo-photo-album\sorted_csv"
         '
         'btnSortDestDir
         '
         Me.btnSortDestDir.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.btnSortDestDir.Location = New System.Drawing.Point(1070, 35)
+        Me.btnSortDestDir.Location = New System.Drawing.Point(1084, 35)
         Me.btnSortDestDir.Name = "btnSortDestDir"
         Me.btnSortDestDir.Size = New System.Drawing.Size(55, 23)
         Me.btnSortDestDir.TabIndex = 3
@@ -185,7 +198,7 @@ Partial Class MainForm
         'btnSortSrcFile
         '
         Me.btnSortSrcFile.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.btnSortSrcFile.Location = New System.Drawing.Point(1009, 6)
+        Me.btnSortSrcFile.Location = New System.Drawing.Point(1023, 6)
         Me.btnSortSrcFile.Name = "btnSortSrcFile"
         Me.btnSortSrcFile.Size = New System.Drawing.Size(55, 23)
         Me.btnSortSrcFile.TabIndex = 2
@@ -205,9 +218,9 @@ Partial Class MainForm
         '
         Me.txtSortSrc.Anchor = CType(((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Left) _
             Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
-        Me.txtSortSrc.Location = New System.Drawing.Point(85, 8)
+        Me.txtSortSrc.Location = New System.Drawing.Point(74, 8)
         Me.txtSortSrc.Name = "txtSortSrc"
-        Me.txtSortSrc.Size = New System.Drawing.Size(918, 20)
+        Me.txtSortSrc.Size = New System.Drawing.Size(943, 20)
         Me.txtSortSrc.TabIndex = 0
         Me.txtSortSrc.Text = "C:\Users\Eyal\Documents\coding\geo-photo-album\csv\BT747log_20111018_199_FUJI.csv" & _
     ""
@@ -268,7 +281,7 @@ Partial Class MainForm
         Me.txtFilterDest.Name = "txtFilterDest"
         Me.txtFilterDest.Size = New System.Drawing.Size(918, 20)
         Me.txtFilterDest.TabIndex = 12
-        Me.txtFilterDest.Text = "E:\Users\Eyal\Pictures\World Tour 2011-2012\output"
+        Me.txtFilterDest.Text = "C:\Users\Eyal\Pictures\World Tour 2011-2012\output"
         '
         'btnFilterDestDir
         '
@@ -317,7 +330,7 @@ Partial Class MainForm
         Me.txtFilterSrc.Name = "txtFilterSrc"
         Me.txtFilterSrc.Size = New System.Drawing.Size(918, 20)
         Me.txtFilterSrc.TabIndex = 7
-        Me.txtFilterSrc.Text = "E:\Users\Eyal\Pictures\World Tour 2011-2012\sorted_csv"
+        Me.txtFilterSrc.Text = "C:\Users\Eyal\Pictures\World Tour 2011-2012\sorted_csv"
         '
         'TabTagFiles
         '
@@ -389,7 +402,7 @@ Partial Class MainForm
         Me.txtTagFile.Name = "txtTagFile"
         Me.txtTagFile.Size = New System.Drawing.Size(932, 20)
         Me.txtTagFile.TabIndex = 20
-        Me.txtTagFile.Text = "E:\Users\Eyal\Pictures\World Tour 2011-2012\photo_info.json"
+        Me.txtTagFile.Text = "C:\Users\Eyal\Pictures\World Tour 2011-2012\photo_info.json"
         '
         'SplitContainer1
         '
@@ -432,7 +445,6 @@ Partial Class MainForm
         '
         'btnIconView
         '
-        Me.btnIconView.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
         Me.btnIconView.Location = New System.Drawing.Point(64, 31)
         Me.btnIconView.Name = "btnIconView"
         Me.btnIconView.Size = New System.Drawing.Size(55, 23)
@@ -442,7 +454,6 @@ Partial Class MainForm
         '
         'btnDetailView
         '
-        Me.btnDetailView.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
         Me.btnDetailView.Location = New System.Drawing.Point(3, 31)
         Me.btnDetailView.Name = "btnDetailView"
         Me.btnDetailView.Size = New System.Drawing.Size(55, 23)
@@ -468,7 +479,7 @@ Partial Class MainForm
         Me.txtTagFilter.Name = "txtTagFilter"
         Me.txtTagFilter.Size = New System.Drawing.Size(582, 20)
         Me.txtTagFilter.TabIndex = 0
-        Me.txtTagFilter.Text = "E:\Users\Eyal\Pictures\World Tour 2011-2012\Thailand\Bangkok"
+        Me.txtTagFilter.Text = "C:\Users\Eyal\Pictures\World Tour 2011-2012\Thailand\Bangkok"
         '
         'lvFileTags
         '
@@ -584,6 +595,113 @@ Partial Class MainForm
         Me.txtTags.Size = New System.Drawing.Size(424, 93)
         Me.txtTags.TabIndex = 0
         '
+        'TabOutputFiles
+        '
+        Me.TabOutputFiles.Controls.Add(Me.btnOutput)
+        Me.TabOutputFiles.Controls.Add(Me.btnOutputDestFile)
+        Me.TabOutputFiles.Controls.Add(Me.lblOutputDest)
+        Me.TabOutputFiles.Controls.Add(Me.txtOutputDest)
+        Me.TabOutputFiles.Controls.Add(Me.btnOutputDestDir)
+        Me.TabOutputFiles.Controls.Add(Me.btnOutputSrcDir)
+        Me.TabOutputFiles.Controls.Add(Me.btnOutputSrcFile)
+        Me.TabOutputFiles.Controls.Add(Me.lblOutputSrc)
+        Me.TabOutputFiles.Controls.Add(Me.txtOutputSrc)
+        Me.TabOutputFiles.Location = New System.Drawing.Point(4, 22)
+        Me.TabOutputFiles.Name = "TabOutputFiles"
+        Me.TabOutputFiles.Padding = New System.Windows.Forms.Padding(3)
+        Me.TabOutputFiles.Size = New System.Drawing.Size(1145, 628)
+        Me.TabOutputFiles.TabIndex = 3
+        Me.TabOutputFiles.Text = "Output Files"
+        Me.TabOutputFiles.UseVisualStyleBackColor = True
+        '
+        'btnOutput
+        '
+        Me.btnOutput.Anchor = CType((System.Windows.Forms.AnchorStyles.Bottom Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.btnOutput.Location = New System.Drawing.Point(1062, 597)
+        Me.btnOutput.Name = "btnOutput"
+        Me.btnOutput.Size = New System.Drawing.Size(75, 23)
+        Me.btnOutput.TabIndex = 23
+        Me.btnOutput.Text = "Output!"
+        Me.btnOutput.UseVisualStyleBackColor = True
+        '
+        'btnOutputDestFile
+        '
+        Me.btnOutputDestFile.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.btnOutputDestFile.Location = New System.Drawing.Point(1021, 35)
+        Me.btnOutputDestFile.Name = "btnOutputDestFile"
+        Me.btnOutputDestFile.Size = New System.Drawing.Size(55, 23)
+        Me.btnOutputDestFile.TabIndex = 22
+        Me.btnOutputDestFile.Text = "File..."
+        Me.btnOutputDestFile.UseVisualStyleBackColor = True
+        '
+        'lblOutputDest
+        '
+        Me.lblOutputDest.AutoSize = True
+        Me.lblOutputDest.Location = New System.Drawing.Point(6, 40)
+        Me.lblOutputDest.Name = "lblOutputDest"
+        Me.lblOutputDest.Size = New System.Drawing.Size(60, 13)
+        Me.lblOutputDest.TabIndex = 21
+        Me.lblOutputDest.Text = "Destination"
+        '
+        'txtOutputDest
+        '
+        Me.txtOutputDest.Anchor = CType(((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Left) _
+            Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.txtOutputDest.Location = New System.Drawing.Point(72, 37)
+        Me.txtOutputDest.Name = "txtOutputDest"
+        Me.txtOutputDest.Size = New System.Drawing.Size(943, 20)
+        Me.txtOutputDest.TabIndex = 20
+        Me.txtOutputDest.Text = "C:\Users\Eyal\Pictures\World Tour 2011-2012\output"
+        '
+        'btnOutputDestDir
+        '
+        Me.btnOutputDestDir.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.btnOutputDestDir.Location = New System.Drawing.Point(1082, 35)
+        Me.btnOutputDestDir.Name = "btnOutputDestDir"
+        Me.btnOutputDestDir.Size = New System.Drawing.Size(55, 23)
+        Me.btnOutputDestDir.TabIndex = 19
+        Me.btnOutputDestDir.Text = "Folder..."
+        Me.btnOutputDestDir.UseVisualStyleBackColor = True
+        '
+        'btnOutputSrcDir
+        '
+        Me.btnOutputSrcDir.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.btnOutputSrcDir.Location = New System.Drawing.Point(1082, 6)
+        Me.btnOutputSrcDir.Name = "btnOutputSrcDir"
+        Me.btnOutputSrcDir.Size = New System.Drawing.Size(55, 23)
+        Me.btnOutputSrcDir.TabIndex = 18
+        Me.btnOutputSrcDir.Text = "Folder..."
+        Me.btnOutputSrcDir.UseVisualStyleBackColor = True
+        '
+        'btnOutputSrcFile
+        '
+        Me.btnOutputSrcFile.Anchor = CType((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.btnOutputSrcFile.Location = New System.Drawing.Point(1021, 6)
+        Me.btnOutputSrcFile.Name = "btnOutputSrcFile"
+        Me.btnOutputSrcFile.Size = New System.Drawing.Size(55, 23)
+        Me.btnOutputSrcFile.TabIndex = 17
+        Me.btnOutputSrcFile.Text = "File..."
+        Me.btnOutputSrcFile.UseVisualStyleBackColor = True
+        '
+        'lblOutputSrc
+        '
+        Me.lblOutputSrc.AutoSize = True
+        Me.lblOutputSrc.Location = New System.Drawing.Point(6, 11)
+        Me.lblOutputSrc.Name = "lblOutputSrc"
+        Me.lblOutputSrc.Size = New System.Drawing.Size(41, 13)
+        Me.lblOutputSrc.TabIndex = 16
+        Me.lblOutputSrc.Text = "Source"
+        '
+        'txtOutputSrc
+        '
+        Me.txtOutputSrc.Anchor = CType(((System.Windows.Forms.AnchorStyles.Top Or System.Windows.Forms.AnchorStyles.Left) _
+            Or System.Windows.Forms.AnchorStyles.Right), System.Windows.Forms.AnchorStyles)
+        Me.txtOutputSrc.Location = New System.Drawing.Point(72, 8)
+        Me.txtOutputSrc.Name = "txtOutputSrc"
+        Me.txtOutputSrc.Size = New System.Drawing.Size(943, 20)
+        Me.txtOutputSrc.TabIndex = 15
+        Me.txtOutputSrc.Text = "C:\Users\Eyal\Pictures\World Tour 2011-2012\photo_info.json"
+        '
         'MainForm
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
@@ -619,6 +737,8 @@ Partial Class MainForm
         Me.SplitContainer5.ResumeLayout(False)
         CType(Me.picPreview, System.ComponentModel.ISupportInitialize).EndInit()
         CType(Me.wmpPreview, System.ComponentModel.ISupportInitialize).EndInit()
+        Me.TabOutputFiles.ResumeLayout(False)
+        Me.TabOutputFiles.PerformLayout()
         Me.ResumeLayout(False)
 
     End Sub
@@ -666,5 +786,16 @@ Partial Class MainForm
     Friend WithEvents lvFileTags As GeoPhotoAlbums.FileView
     Friend WithEvents ColumnHeader1 As System.Windows.Forms.ColumnHeader
     Friend WithEvents ColumnHeader2 As System.Windows.Forms.ColumnHeader
+    Friend WithEvents TabOutputFiles As System.Windows.Forms.TabPage
+    Friend WithEvents btnOutput As System.Windows.Forms.Button
+    Friend WithEvents btnOutputDestFile As System.Windows.Forms.Button
+    Friend WithEvents lblOutputDest As System.Windows.Forms.Label
+    Friend WithEvents txtOutputDest As System.Windows.Forms.TextBox
+    Friend WithEvents btnOutputDestDir As System.Windows.Forms.Button
+    Friend WithEvents btnOutputSrcDir As System.Windows.Forms.Button
+    Friend WithEvents btnOutputSrcFile As System.Windows.Forms.Button
+    Friend WithEvents lblOutputSrc As System.Windows.Forms.Label
+    Friend WithEvents txtOutputSrc As System.Windows.Forms.TextBox
+    Friend WithEvents BackgroundWorker1 As System.ComponentModel.BackgroundWorker
 
 End Class

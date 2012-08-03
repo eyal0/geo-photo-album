@@ -194,7 +194,7 @@ Class MainForm
             Dim gps_samples As IEnumerable(Of GpsSample)
             gps_samples = gps_samples_enumerable.MergeSorted()
             WriteGpsSamples(destination, gps_samples)
-            
+
             'Dim filtered_gps_samples As IEnumerable(Of GpsSample)
             'filtered_gps_samples = gps_samples.FilterByPrevious(Function(prev As GpsSample, current As GpsSample)
             '                                                        Return prev.Coordinate.ZoomToPoint(0).Floor <> current.Coordinate.ZoomToPoint(0).Floor
@@ -203,7 +203,7 @@ Class MainForm
             '    Debug.WriteLine(g)
             'Next
         Else 'it's a file destination
-            Dim c As New Csv()
+            Dim c As New Csv
             For Each source As String In sources
                 If System.IO.Directory.Exists(source) Then
                     For Each csv_file As String In System.IO.Directory.GetFiles(source, "*.csv", IO.SearchOption.AllDirectories)
@@ -237,9 +237,10 @@ Class MainForm
     End Function
 
     Sub WriteGpsSamples(dest_dir As String, gps_samples As IEnumerable(Of GpsSample))
+        Const MaxZoomDepth As Integer = 24
         Dim sample_index As Integer = 0
         Dim output_files As New Dictionary(Of String, IO.StreamWriter)
-        Dim prev As GpsSample? = Nothing
+        Dim prev(0 To MaxZoomDepth - 1) As Tuple(Of Integer, GpsSample)
         Dim tile_info As IO.StreamWriter = Nothing
         Dim start_datetime As DateTimeOffset? = Nothing
         Dim end_datetime As DateTimeOffset? = Nothing
@@ -249,35 +250,44 @@ Class MainForm
             End If
             end_datetime = g.Datetime
             Dim z As Integer = 0
-            Do Until prev Is Nothing OrElse prev.Value.Coordinate.ZoomToPoint(z).Floor <> g.Coordinate.ZoomToPoint(z).Floor OrElse z > 19
+            Dim latest_prev As Tuple(Of Integer, GpsSample) = Nothing
+            Do While z < prev.Length
+                If prev(z) IsNot Nothing AndAlso (latest_prev Is Nothing OrElse prev(z).Item1 > latest_prev.Item1) Then
+                    latest_prev = prev(z)
+                End If
+                If latest_prev Is Nothing OrElse latest_prev.Item2.Coordinate.ZoomToPoint(z).Floor <> g.Coordinate.ZoomToPoint(z).Floor Then
+                    Exit Do
+                End If
                 z = z + 1
             Loop
-            'need to output to this zoom level
-            Dim current_filename As String = IO.Path.Combine(dest_dir, ZPtoFilename(z, g.Coordinate.ZoomToPoint(z).Floor))
-            'output
-            If Not output_files.ContainsKey(current_filename) Then
-                If Not IO.Directory.Exists(IO.Path.GetDirectoryName(current_filename)) Then
-                    IO.Directory.CreateDirectory(IO.Path.GetDirectoryName(current_filename))
-                End If
-                output_files.Add(current_filename, IO.File.CreateText(current_filename))
-                output_files(current_filename).Write("{" & vbCrLf &
-                                                     "  ""path"" : [" & vbCrLf &
-                                                     "    " & GpsSampleToJsonString(sample_index, g))
-                If tile_info Is Nothing Then
-                    tile_info = IO.File.CreateText(IO.Path.Combine(dest_dir, "tile_info.json"))
-                    tile_info.Write("{" & vbCrLf &
-                                    "  ""tiles"" : [" & vbCrLf &
-                                    "    """ & ZPtoFilename(z, g.Coordinate.ZoomToPoint(z).Floor).Replace(IO.Path.DirectorySeparatorChar, "/") & """")
+            If z < prev.Length Then
+                prev(z) = New Tuple(Of Integer, GpsSample)(sample_index, g) 'save the most recent output from this zoom level
+                'need to output to this zoom level
+                Dim current_filename As String = IO.Path.Combine(dest_dir, ZPtoFilename(z, g.Coordinate.ZoomToPoint(z).Floor))
+                'output
+                If Not output_files.ContainsKey(current_filename) Then
+                    If Not IO.Directory.Exists(IO.Path.GetDirectoryName(current_filename)) Then
+                        IO.Directory.CreateDirectory(IO.Path.GetDirectoryName(current_filename))
+                    End If
+                    output_files.Add(current_filename, IO.File.CreateText(current_filename))
+                    output_files(current_filename).Write("{" & vbCrLf &
+                                                         "  ""path"" : [" & vbCrLf &
+                                                         "    " & GpsSampleToJsonString(sample_index, g))
+                    If tile_info Is Nothing Then
+                        tile_info = IO.File.CreateText(IO.Path.Combine(dest_dir, "tile_info.json"))
+                        tile_info.Write("{" & vbCrLf &
+                                        "  ""tiles"" : [" & vbCrLf &
+                                        "    """ & ZPtoFilename(z, g.Coordinate.ZoomToPoint(z).Floor).Replace(IO.Path.DirectorySeparatorChar, "/") & """")
+                    Else
+                        tile_info.Write("," & vbCrLf &
+                                        "    """ & ZPtoFilename(z, g.Coordinate.ZoomToPoint(z).Floor).Replace(IO.Path.DirectorySeparatorChar, "/") & """")
+                    End If
                 Else
-                    tile_info.Write("," & vbCrLf &
-                                    "    """ & ZPtoFilename(z, g.Coordinate.ZoomToPoint(z).Floor) & """")
+                    output_files(current_filename).Write("," & vbCrLf &
+                                                         "    " & GpsSampleToJsonString(sample_index, g))
                 End If
-            Else
-                output_files(current_filename).Write("," & vbCrLf &
-                                                     "    " & GpsSampleToJsonString(sample_index, g))
             End If
             sample_index += 1
-            prev = g
         Next
         For Each current_file As IO.StreamWriter In output_files.Values
             current_file.Write(vbCrLf &
@@ -288,7 +298,8 @@ Class MainForm
         tile_info.Write(vbCrLf &
                         "  ]," & vbCrLf &
                         "  ""start_datetime"" : """ & start_datetime.Value.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffffzzz", Globalization.CultureInfo.InvariantCulture) & """," & vbCrLf &
-                        "  ""end_datetime"" : """ & end_datetime.Value.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffffzzz", Globalization.CultureInfo.InvariantCulture) & """" & vbCrLf &
+                        "  ""end_datetime"" : """ & end_datetime.Value.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffffzzz", Globalization.CultureInfo.InvariantCulture) & """," & vbCrLf &
+                        "  ""generation_datetime"" : " & Date.UtcNow().Ticks & vbCrLf &
                         "}")
         tile_info.Close()
     End Sub
@@ -334,7 +345,6 @@ Class MainForm
     Private Sub btnSaveJson_Click(sender As System.Object, e As System.EventArgs) Handles btnSaveJson.Click
         System.IO.File.WriteAllLines(txtTagFile.Text, myJson.ToJson)
     End Sub
-#End Region
 
     Private Sub btnSaveTags_Click(sender As System.Object, e As System.EventArgs) Handles btnSaveTags.Click
         If Not myJson.ContainsKey("Tags") Then
@@ -595,4 +605,223 @@ Class MainForm
     Private Sub btnIconView_Click(sender As Object, e As EventArgs) Handles btnIconView.Click
         lvFileTags.View = View.LargeIcon
     End Sub
+#End Region
+
+#Region "Output"
+    Dim photo_info As New Json
+    Class PhotoInfo
+        Implements IComparable(Of PhotoInfo)
+
+        Property Filename As String
+        Property DTO As DateTimeOffset
+        Property Rank As Integer = -1
+        Property LatLng As Coordinate? = Nothing
+        Property Orientation As Integer = 1
+
+        Public Function CompareTo(other As PhotoInfo) As Integer Implements IComparable(Of PhotoInfo).CompareTo
+            Return DTO.CompareTo(other.DTO)
+        End Function
+    End Class
+
+    Public Shared Sub ResizeJpeg(ByVal filePathSource As String, filePathDestination As String, ByVal maxWidth As Integer, ByVal maxHeight As Integer, orientation As Integer)
+        Dim imgPhoto As System.Drawing.Image = System.Drawing.Image.FromFile(filePathSource)
+        ResizeJpeg(imgPhoto, filePathDestination, maxWidth, maxHeight, orientation)
+    End Sub
+
+    Public Shared Sub ResizeJpeg(ByVal imgPhoto As System.Drawing.Image, filePathDestination As String, ByVal maxWidth As Integer, ByVal maxHeight As Integer, orientation As Integer)
+        Select Case orientation
+            Case 1
+                imgPhoto.RotateFlip(RotateFlipType.RotateNoneFlipNone)
+            Case 2
+                imgPhoto.RotateFlip(RotateFlipType.RotateNoneFlipX)
+            Case 3
+                imgPhoto.RotateFlip(RotateFlipType.Rotate180FlipNone)
+            Case 4
+                imgPhoto.RotateFlip(RotateFlipType.Rotate180FlipX)
+            Case 5
+                imgPhoto.RotateFlip(RotateFlipType.Rotate90FlipX)
+            Case 6
+                imgPhoto.RotateFlip(RotateFlipType.Rotate90FlipNone)
+            Case 7
+                imgPhoto.RotateFlip(RotateFlipType.Rotate270FlipX)
+            Case 8
+                imgPhoto.RotateFlip(RotateFlipType.Rotate270FlipNone)
+        End Select
+        Dim sourceWidth As Integer = imgPhoto.Width
+        Dim sourceHeight As Integer = imgPhoto.Height
+        Dim nPercentW As Single = (CType(maxWidth, Single) / CType(sourceWidth, Single))
+        Dim nPercentH As Single = (CType(maxHeight, Single) / CType(sourceHeight, Single))
+        'if we have to pad the height pad both the top and the bottom
+        'with the difference between the scaled height and the desired height
+        Dim nPercent As Single = Math.Min(nPercentH, nPercentW)
+        Dim destLeft As Integer = 0
+        Dim destTop As Integer = 0
+        Dim destWidth As Integer = CType((sourceWidth * nPercent), Integer)
+        Dim destHeight As Integer = CType((sourceHeight * nPercent), Integer)
+        Dim bmPhoto As Bitmap = New Bitmap(imgPhoto, destWidth, destHeight)
+        bmPhoto.SetResolution(imgPhoto.HorizontalResolution, imgPhoto.VerticalResolution)
+        Dim grPhoto As Graphics = Graphics.FromImage(bmPhoto)
+        grPhoto.InterpolationMode = Drawing2D.InterpolationMode.HighQualityBicubic
+        grPhoto.SmoothingMode = Drawing2D.SmoothingMode.HighQuality
+        grPhoto.PixelOffsetMode = Drawing2D.PixelOffsetMode.HighQuality
+        Dim destRect As Rectangle = New Rectangle(destLeft, destTop, destWidth, destHeight)
+        grPhoto.DrawImage(imgPhoto, destRect, New Rectangle(0, 0, sourceWidth, sourceHeight), GraphicsUnit.Pixel)
+        grPhoto.Dispose()
+        Try
+            For Each propertyItem As Imaging.PropertyItem In imgPhoto.PropertyItems
+                If propertyItem.Id = ExifLib.ExifTags.Orientation AndAlso propertyItem.Value(0) <> 1 Then
+                    propertyItem.Value(0) = 1
+                End If
+                    Try
+                        bmPhoto.SetPropertyItem(propertyItem)
+                    Catch
+                        'nothing
+                    End Try
+            Next
+        Catch
+            'nothing
+        End Try
+        Dim enc As System.Drawing.Imaging.Encoder = System.Drawing.Imaging.Encoder.Quality
+        Dim encParms As System.Drawing.Imaging.EncoderParameters = New Imaging.EncoderParameters(1)
+        Dim encParm As System.Drawing.Imaging.EncoderParameter = New Imaging.EncoderParameter(enc, 100L)
+        encParms.Param(0) = encParm
+        Dim codecInfo() As Imaging.ImageCodecInfo = Imaging.ImageCodecInfo.GetImageEncoders
+        Dim codecInfoJpeg As Imaging.ImageCodecInfo = codecInfo(1)
+        bmPhoto.Save(filePathDestination, codecInfoJpeg, encParms)
+        bmPhoto.Dispose()
+        imgPhoto.Dispose()
+    End Sub
+
+    Private Sub btnOutput_Click(sender As Object, e As EventArgs) Handles btnOutput.Click
+        Dim sources As New List(Of String)
+        For Each filename As String In txtFilterSrc.Text.Split(";"c)
+            sources.Add(filename.Trim(""""c))
+        Next
+        Dim destination As String = txtFilterDest.Text.Trim(""""c)
+        Dim source_enumerables As New List(Of IEnumerable(Of String))
+        For Each source As String In sources
+            If System.IO.Directory.Exists(source) Then
+                Dim csv_filenames As IEnumerable(Of String) = System.IO.Directory.EnumerateFiles(source, "*.csv", IO.SearchOption.AllDirectories)
+                Dim csv_file_enumerables As IEnumerable(Of IEnumerable(Of String))
+                csv_file_enumerables = csv_filenames.Select(Function(filename As String)
+                                                                Return System.IO.File.ReadLines(filename)
+                                                            End Function)
+                source_enumerables.AddRange(csv_file_enumerables)
+            ElseIf System.IO.File.Exists(source) Then
+                source_enumerables.Add(System.IO.File.ReadLines(source))
+            Else
+                Throw New ApplicationException(source + " not found")
+            End If
+        Next
+        Dim csvs_rows As IEnumerable(Of IEnumerable(Of Dictionary(Of String, String)))
+        csvs_rows = source_enumerables.Select(Function(csv_file_lines As IEnumerable(Of String))
+                                                  Return Csv.EnumerateLines(csv_file_lines)
+                                              End Function)
+        Dim gps_samples_enumerable As IEnumerable(Of IEnumerable(Of GpsSample))
+        gps_samples_enumerable = csvs_rows.Select(Function(csv_rows As IEnumerable(Of IDictionary(Of String, String)))
+                                                      Return csv_rows.Select(Function(dict As IDictionary(Of String, String))
+                                                                                 Return GpsSample.FromDict(dict)
+                                                                             End Function)
+                                                  End Function)
+        Dim gps_samples As IEnumerable(Of GpsSample)
+        gps_samples = gps_samples_enumerable.MergeSorted()
+
+        If IO.File.Exists(txtOutputSrc.Text) Then
+            Dim gpa_info As Json = Json.FromFile(txtOutputSrc.Text)
+            Dim tags As Json = gpa_info("Tags")
+            Dim all_photos As New List(Of PhotoInfo)
+            Dim rootdir As String = Nothing
+            For Each kvp As KeyValuePair(Of String, Json) In tags
+                Dim new_photo As New PhotoInfo
+                new_photo.Filename = kvp.Value("Filename").ToString
+                Dim current_datetime As DateTime = DateTime.Parse(kvp.Value("DateTime").ToString)
+                If kvp.Value.ContainsKey("TimeCorrection") Then
+                    current_datetime = current_datetime + New TimeSpan(CInt(kvp.Value("TimeCorrection").ToDouble), 0, 0)
+                End If
+                new_photo.DTO = New DateTimeOffset(current_datetime, New TimeSpan(CInt(kvp.Value("TimeZone").ToDouble), 0, 0))
+                new_photo.Orientation = CInt(kvp.Value("Orientation").ToDouble)
+                If rootdir Is Nothing Then
+                    rootdir = IO.Path.GetDirectoryName(new_photo.Filename)
+                Else
+                    Do Until IO.Path.GetFullPath(new_photo.Filename).StartsWith(rootdir)
+                        rootdir = IO.Path.GetDirectoryName(rootdir)
+                    Loop
+                End If
+                If kvp.Value.ContainsKey("GpsLatitude") AndAlso kvp.Value.ContainsKey("GpsLongitude") Then
+                    new_photo.LatLng = Coordinate.FromDegrees(kvp.Value("GpsLatitude").ToDouble, kvp.Value("GpsLongitude").ToDouble)
+                End If
+                all_photos.Add(new_photo)
+            Next
+            all_photos.Sort() 'sorted by datetimeoffset only!
+            Dim sample_iterator As Iterator(Of GpsSample) = gps_samples.GetIterator()
+            sample_iterator.MoveNext()
+            Dim prev_sample As GpsSample = sample_iterator.Next
+            For Each current_photo As PhotoInfo In all_photos
+                'gps tag the photo if needed
+                If current_photo.LatLng Is Nothing Then
+                    Do Until sample_iterator.Current.Datetime >= current_photo.DTO AndAlso prev_sample.Datetime <= current_photo.DTO
+                        prev_sample = sample_iterator.Next
+                    Loop
+                    current_photo.LatLng = prev_sample.Coordinate.IntermediatePoint(sample_iterator.Current.Coordinate,
+                                                                                    (current_photo.DTO - prev_sample.Datetime).TotalSeconds /
+                                                                                    (sample_iterator.Current.Datetime - prev_sample.Datetime).TotalSeconds)
+                End If
+            Next
+            'later here we will sort by rank from the shootout
+            Dim current_rank As Integer = 0
+            Dim photo_info As IO.TextWriter = Nothing
+            If IO.Directory.Exists(txtOutputDest.Text) Then
+                For Each current_photo As PhotoInfo In all_photos
+                    current_photo.Rank = current_rank
+                    current_rank += 1
+                    'write photo
+                    Dim relative_path As String = current_photo.Filename.Substring(rootdir.Length + IO.Path.PathSeparator.ToString.Length)
+                    If (relative_path.EndsWith(".jpg", StringComparison.CurrentCultureIgnoreCase) OrElse
+                        relative_path.EndsWith(".jpeg", StringComparison.CurrentCultureIgnoreCase)) Then
+                        'Dim dest_file As String = IO.Path.Combine(destination, "photos", relative_path)
+                        'If Not IO.Directory.Exists(IO.Path.GetDirectoryName(dest_file)) Then
+                        '    IO.Directory.CreateDirectory(IO.Path.GetDirectoryName(dest_file))
+                        'End If
+                        'ResizeJpeg(current_photo.Filename, dest_file, 1600, 1600, current_photo.Orientation)
+                        'dest_file = IO.Path.Combine(destination, "thumbnails", relative_path)
+                        'If Not IO.Directory.Exists(IO.Path.GetDirectoryName(dest_file)) Then
+                        '    IO.Directory.CreateDirectory(IO.Path.GetDirectoryName(dest_file))
+                        'End If
+                        'ResizeJpeg(current_photo.Filename, dest_file, 64, 64, current_photo.Orientation)
+                    ElseIf relative_path.EndsWith(".avi", StringComparison.CurrentCultureIgnoreCase) Then
+                        'Dim b As Bitmap = GetFrameFromVideo(current_photo.Filename, 0.3)
+                        'Dim dest_file As String = IO.Path.Combine(destination, "thumbnails", relative_path.Remove(relative_path.Length - 4) + ".jpg")
+                        'If Not IO.Directory.Exists(IO.Path.GetDirectoryName(dest_file)) Then
+                        '    IO.Directory.CreateDirectory(IO.Path.GetDirectoryName(dest_file))
+                        'End If
+                        'ResizeJpeg(b, dest_file, 64, 64, current_photo.Orientation)
+                    End If
+                    If photo_info Is Nothing Then
+                        photo_info = IO.File.CreateText(IO.Path.Combine(destination, "photo_info.json"))
+                        photo_info.Write("{" & vbCrLf &
+                                         "  ""photos"" : [" & vbCrLf &
+                                         "    " & PhotoInfoToJsonString(current_photo, relative_path))
+                    Else
+                        photo_info.Write("," & vbCrLf &
+                                         "    " & PhotoInfoToJsonString(current_photo, relative_path))
+                    End If
+                Next
+                photo_info.Write(vbCrLf &
+                                 "  ]" & vbCrLf &
+                                 "}")
+                photo_info.Close()
+            End If
+        End If
+    End Sub
+
+    Function PhotoInfoToJsonString(photoinfo As PhotoInfo, relative_path As String) As String
+        Return ("[" &
+                """" & relative_path.Replace("\", "\\") & """," &
+                photoinfo.Rank.ToString(Globalization.CultureInfo.InvariantCulture) & "," &
+                """" & photoinfo.DTO.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffffzzz", Globalization.CultureInfo.InvariantCulture) & """," &
+                photoinfo.LatLng.Value.LatitudeInDegrees.ToString(Globalization.CultureInfo.InvariantCulture) & "," &
+                photoinfo.LatLng.Value.LongitudeInDegrees.ToString(Globalization.CultureInfo.InvariantCulture) &
+                "]")
+    End Function
+#End Region
 End Class
