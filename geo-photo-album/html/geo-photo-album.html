@@ -29,12 +29,114 @@
         font-size: 62.5%;
         font-family: "Trebuchet MS", "Helvetica", "Arial",  "Verdana", "sans-serif";
       }
+
+      img[src^="da"], img[src^="da"].fadeIn {
+        animation-name: fadeInFrames;
+        animation-duration: 1s;
+        animation-iteration-count: 1;
+        animation-direction: normal;
+        animation-timing-function: linear;
+        animation-play-state: running;
+        animation-fill-mode: forwards;
+        
+        -moz-animation-name: fadeInFrames;
+        -moz-animation-duration: 1s;
+        -moz-animation-iteration-count: 1;
+        -moz-animation-direction: normal;
+        -moz-animation-timing-function: linear;
+        -moz-animation-play-state: running;
+        -moz-animation-fill-mode: forwards;
+
+        -webkit-animation-name: fadeInFrames;
+        -webkit-animation-duration: 1s;
+        -webkit-animation-iteration-count: 1;
+        -webkit-animation-direction: normal;
+        -webkit-animation-timing-function: linear;
+        -webkit-animation-play-state: running;
+        -webkit-animation-fill-mode: forwards;
+
+        -o-animation-name: fadeInFrames;
+        -o-animation-duration: 1s;
+        -o-animation-iteration-count: 1;
+        -o-animation-direction: normal;
+        -o-animation-timing-function: linear;
+        -o-animation-play-state: running;
+        -o-animation-fill-mode: forwards;
+      }
+      
+      img[src^="da"].fadeOut {
+        animation-name: fadeOutFrames;
+        animation-duration: 400ms;
+        animation-iteration-count: 1;
+        animation-direction: normal;
+        animation-timing-function: linear;
+        animation-play-state: running;
+        animation-fill-mode: forwards;
+
+        -moz-animation-name: fadeOutFrames;
+        -moz-animation-duration: 400ms;
+        -moz-animation-iteration-count: 1;
+        -moz-animation-direction: normal;
+        -moz-animation-timing-function: linear;
+        -moz-animation-play-state: running;
+        -moz-animation-fill-mode: forwards;
+
+        -webkit-animation-name: fadeOutFrames;
+        -webkit-animation-duration: 400ms;
+        -webkit-animation-iteration-count: 1;
+        -webkit-animation-direction: normal;
+        -webkit-animation-timing-function: linear;
+        -webkit-animation-play-state: running;
+        -webkit-animation-fill-mode: forwards;
+
+        -o-animation-name: fadeOutFrames;
+        -o-animation-duration: 400ms;
+        -o-animation-iteration-count: 1;
+        -o-animation-direction: normal;
+        -o-animation-timing-function: linear;
+        -o-animation-play-state: running;
+        -o-animation-fill-mode: forwards;
+        }
+      
+      @keyframes fadeInFrames {
+        0%   {opacity: 0;}
+        100% {opacity: 0.7;}
+      }
+      @-moz-keyframes fadeInFrames {
+        0%   {opacity: 0;}
+        100% {opacity: 0.7;}
+      }
+      @-webkit-keyframes fadeInFrames {
+        0%   {opacity: 0;}
+        100% {opacity: 0.7;}
+      }
+      @-o-keyframes fadeInFrames {
+        0%   {opacity: 0;}
+        100% {opacity: 0.7;}
+      }
+      
+      @keyframes fadeOutFrames {
+        0%   {opacity: 0.7;}
+        100% {opacity: 0;}
+      }
+      @-moz-keyframes fadeOutFrames {
+        0%   {opacity: 0.7;}
+        100% {opacity: 0;}
+      }
+      @-webkit-keyframes fadeOutFrames {
+        0%   {opacity: 0.7;}
+        100% {opacity: 0;}
+      }
+      @-o-keyframes fadeOutFrames {
+        0%   {opacity: 0.7;}
+        100% {opacity: 0;}
+      }
+      
     </style>
-    <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.21/themes/ui-lightness/jquery-ui.css">
+    <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.21/themes/trontastic/jquery-ui.css">
     <script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?sensor=false"></script>
-    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.js"></script>
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/mootools/1.4.5/mootools-yui-compressed.js"></script>
-    <script type="text/javascript" src="jquery.idle-timer.js"></script>
     <script type="text/javascript">
       if (typeof jQuery == 'undefined') {
         document.write(unescape("%3Cscript src='/path/to/your/jquery' type='text/javascript'%3E%3C/script%3E"));
@@ -135,20 +237,21 @@
       function getBase64Image(img) {
         // Create an empty canvas element
         var canvas = document.createElement("canvas");
-        canvas.width = img.width;
-        canvas.height = img.height;
+        var minSide = Math.min(img.width, img.height);
+        canvas.width = minSide;
+        canvas.height = minSide;
 
         // Copy the image contents to the canvas
         var ctx = canvas.getContext("2d");
-        //ctx.strokeStyle="rgba(0,0,255,0.5)";
+        ctx.strokeStyle=$(".ui-slider-range").css("background-color");
         //ctx.fillStyle="rgba(0,0,255,0.5)";
-        ctx.arc(img.width/2,img.height/2,Math.min(img.width/2,img.height/2),0,Math.PI*2,true);
+        ctx.arc(minSide/2,minSide/2,minSide/2,0,Math.PI*2,true);
         ctx.clip();
-        ctx.globalAlpha = 0.7;
-        ctx.drawImage(img, 0, 0);
-        ctx.lineWidth=6;
+        //ctx.globalAlpha = 0;
+        ctx.drawImage(img, (img.width-minSide)/2, (img.height-minSide)/2, (img.width-minSide)/2+minSide, (img.height-minSide)/2+minSide, 0, 0, minSide, minSide);
+        ctx.lineWidth=4;
         ctx.beginPath();
-        ctx.arc(img.width/2,img.height/2,Math.min(img.width/2,img.height/2)-1,0,Math.PI*2,true);
+        ctx.arc(minSide/2,minSide/2,minSide/2-1,0,Math.PI*2,true);
         //ctx.fill();
         ctx.stroke();
 
@@ -160,6 +263,22 @@
         return(dataURL); //.replace(/^data:image\/(png|jpg);base64,/, "");
       }
 
+      function markerAnimation(animation_id, currentPhoto) {
+        if(animation_id==101) {
+          $('div[style*="z-index: ' + (1000 + currentPhoto[1]) + ';"] img').removeClass("fadeOut").addClass("fadeIn");
+          currentPhoto[6].setTitle(currentPhoto[0]);
+          currentPhoto[6].setShape(currentPhoto[7]);
+        } else if(animation_id==100) {
+          $('div[style*="z-index: ' + (1000 + currentPhoto[1]) + ';"] img').removeClass("fadeIn").addClass("fadeOut");
+          currentPhoto[6].setTitle("");
+          currentPhoto[6].setShape({type: "circle", coords: [0,0,0]});
+          if($('div[style*="z-index: ' + (1000 + currentPhoto[1]) + ';"] img').css("opacity") == 0) {
+            currentPhoto[6].setMap(null);
+            currentPhoto[6]=null;
+          }
+        }
+      }
+      
       function load_photos() {
         var bounds = map.getBounds();
         photoInfoDisplayed = [];
@@ -168,7 +287,7 @@
           currentPhoto[5] = false;
           var currentLatLng = new google.maps.LatLng(currentPhoto[3],currentPhoto[4]);
           var current_time = (new Date(currentPhoto[2])).getTime();
-          if(current_time >= startDateTime && current_time < endDateTime && bounds.contains(currentLatLng)) {
+          if(current_time >= startDateTime.getTime() && current_time < endDateTime.getTime() && bounds.contains(currentLatLng)) {
             var currentPoint = fromLatLngToPoint(currentLatLng);
             currentPhoto[5] = true;
             for(var otherIndex = 0; otherIndex < photoInfoDisplayed.length; otherIndex++) {
@@ -179,7 +298,7 @@
                 x2 = x2*x2;
                 var y2 = (currentPoint.y-otherPoint.y) * (1<<map.getZoom());
                 y2 = y2*y2;
-                if(x2+y2 < 32*32) {
+                if(x2+y2 < 48*48) {
                   currentPhoto[5] = false;
                   break;
                 }
@@ -188,24 +307,33 @@
           }
           if(currentPhoto[5]) {
             photoInfoDisplayed.push(currentIndex);
-            if(currentPhoto.length > 6) {
-              if(!currentPhoto[6].getVisible())
-                currentPhoto[6].setVisible(true);
+            if(currentPhoto.length > 6 && currentPhoto[6]) {
+              markerAnimation(101, currentPhoto);
             } else {
               var img = document.createElement("img");
+              currentPhoto[6] = new google.maps.Marker({position: new google.maps.LatLng(currentPhoto[3],currentPhoto[4]), title:currentPhoto[0],
+                                                          //icon: mi,
+                                                          visible: true,
+                                                          zIndex: 1000 + currentPhoto[1],
+                                                          animation: 1000 //just to make the img instead of canvas
+                                                        });
+              /*google.maps.event.addListener(currentPhoto[6], 'animation_changed', function () {
+                marker_animation(this.getAnimation(), currentPhoto);
+              });*/
               img.onload = function(e) {
-                var mi = new google.maps.MarkerImage(getBase64Image(img), null, null, new google.maps.Point(Math.min(img.width/2,img.height/2),Math.min(img.width/2,img.height/2)), null);
-                currentPhoto[6] = new google.maps.Marker({position: new google.maps.LatLng(currentPhoto[3],currentPhoto[4]), map: map, title:currentPhoto[0], 
-                                                          icon: mi,
-                                                          shape: {type: "circle",
-                                                                  coords: [img.width/2,img.height/2,Math.min(img.width/2,img.height/2)]}});
+                var side = Math.min(this.width,this.height);
+                var mi = new google.maps.MarkerImage(getBase64Image(this), null, null, new google.maps.Point(side/2,side/2), null);
+                currentPhoto[6].setIcon(mi);
+                currentPhoto[7] = {type: "circle", coords: [side/2,side/2,side/2]};
+                currentPhoto[6].setShape(currentPhoto[7]);
+                currentPhoto[6].setMap(map);
+                //markerAnimation(101, currentPhoto);
               }
-              img.src = "thumbnails/" + currentPhoto[0];
+              img.src = "thumbnails/" + currentPhoto[0].replace(/.avi$/, ".jpg");
             }
           } else {
-            if(currentPhoto.length > 6) {
-              if(currentPhoto[6].getVisible())
-                currentPhoto[6].setVisible(false);
+            if(currentPhoto.length > 6  && currentPhoto[6]) {
+              markerAnimation(100, currentPhoto);
             }
           }
           //document.body.appendChild(img);
@@ -213,6 +341,7 @@
       }
       
       function load_polyline(force, autoZoom) {
+        routePolyline.setOptions({strokeColor: $(".ui-slider-range").css("background-color")});
         if(tilesLoaded > 40) {
           console.debug("reset tiles")
           $.each(tileFiles, function (key, val) {
@@ -301,10 +430,9 @@
             myOptions);
         
         var gpsPath;
-        
         var polyOptions = {
           path: new google.maps.MVCArray(),
-          strokeColor: 'orange',
+          strokeColor: $(".ui-slider-range").css("background-color"),
           strokeOpacity: 0.5,
           strokeWeight: 2,
           geodesic: true
@@ -413,12 +541,16 @@
                                           endDateTime = minDateTime.clone().addDays(ui.values[1]-1);
                                           $("#end_datepicker").datepicker("setDate", endDateTime);
                                         }
-                                      }
-                                     });
-            $(div.getElementById("date_slider")).bind("idle.idleTimer", function(){
-              load_polyline(true, $(div.getElementById("auto_zoom"))[0].checked);
-              load_photos();
-            });
+                                        var sliderTimeout = null;
+                                        if(!sliderTimeout) {
+                                          sliderTimeout = setTimeout(function () {
+                                            clearTimeout(sliderTimeout);
+                                            load_polyline(true, $(div.getElementById("auto_zoom"))[0].checked);
+                                            load_photos();
+                                            sliderTimeout = null;
+                                          }, 500);
+                                        }
+                                      }});
             $(div.getElementById("start_datepicker")).datepicker({appendText: "(yyyy-mm-dd)", dateFormat: "yy-mm-dd", minDate: minDateTime, maxDate: maxDateTime, defaultDate: minDateTime,
                                                showOn: "button", buttonImageOnly: true, buttonImage: "images/calendar.gif",
                                                onSelect: function(dateText, inst) {
@@ -446,7 +578,6 @@
           }
           google.maps.event.addListener(map, 'idle', load_polyline);
           google.maps.event.addListener(map, 'idle', load_photos);
-          $(div.getElementById("date_slider")).idleTimer(100);
         });
         $.getJSON("photo_info.json", function(data) {
           $.each(data, function(key, val) {
@@ -461,5 +592,6 @@
   </head>
   <body>
     <div id="map_canvas"></div>
+    <!--<span class="ui-icon ui-icon-calculator"></span>-->
   </body>
 </html>
