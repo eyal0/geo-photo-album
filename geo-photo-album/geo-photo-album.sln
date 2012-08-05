@@ -4,6 +4,10 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "GeoPhotoAlbum", "geo-photo-album\GeoPhotoAlbum.vbproj", "{CAFDE14A-3959-4CD9-8821-AFD7F6490A39}"
 EndProject
 Global
+	GlobalSection(SubversionScc) = preSolution
+		Manager = AnkhSVN - Subversion Support for Visual Studio
+		Svn-Managed = True
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Debug|Mixed Platforms = Debug|Mixed Platforms
