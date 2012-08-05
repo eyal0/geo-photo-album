@@ -159,6 +159,229 @@ Class MainForm
         DestDir_Click(sender, e, txtFilterDest)
     End Sub
 
+    Private Function GetSortedGpsSamples(ByVal sources As List(Of String)) As IEnumerable(Of GpsSample)
+        Dim source_enumerables As New List(Of IEnumerable(Of String))
+        For Each source As String In sources
+            If System.IO.Directory.Exists(source) Then
+                Dim csv_filenames As IEnumerable(Of String) = System.IO.Directory.EnumerateFiles(source, "*.csv", IO.SearchOption.AllDirectories)
+                Dim csv_file_enumerables As IEnumerable(Of IEnumerable(Of String))
+                csv_file_enumerables = csv_filenames.Select(Function(filename As String)
+                                                                Return System.IO.File.ReadLines(filename)
+                                                            End Function)
+                source_enumerables.AddRange(csv_file_enumerables)
+            ElseIf System.IO.File.Exists(source) Then
+                source_enumerables.Add(System.IO.File.ReadLines(source))
+            Else
+                Throw New ApplicationException(source + " not found")
+            End If
+        Next
+        Dim csvs_rows As IEnumerable(Of IEnumerable(Of Dictionary(Of String, String)))
+        csvs_rows = source_enumerables.Select(Function(csv_file_lines As IEnumerable(Of String))
+                                                  Return Csv.EnumerateLines(csv_file_lines)
+                                              End Function)
+        Dim gps_samples_enumerable As IEnumerable(Of IEnumerable(Of GpsSample))
+        gps_samples_enumerable = csvs_rows.Select(Function(csv_rows As IEnumerable(Of IDictionary(Of String, String)))
+                                                      Return csv_rows.Select(Function(dict As IDictionary(Of String, String))
+                                                                                 Return GpsSample.FromDict(dict)
+                                                                             End Function)
+                                                  End Function)
+        Dim gps_samples As IEnumerable(Of GpsSample)
+        gps_samples = gps_samples_enumerable.MergeSorted()
+        Return gps_samples
+    End Function
+
+    Const LogMinTileSize As Integer = 8
+
+    Private Function GetTileSizes(gps_samples As IEnumerable(Of GpsSample), MaxZoomDepth As Integer) As SortedDictionary(Of Integer, SortedDictionary(Of Integer, Dictionary(Of Point, Integer)))
+        Dim output_files As New SortedDictionary(Of Integer, SortedDictionary(Of Integer, Dictionary(Of Point, Integer)))
+        Dim prev(0 To MaxZoomDepth - 1) As Tuple(Of Integer, GpsSample)
+        Dim sample_index As Integer = 0
+        For Each g As GpsSample In gps_samples
+            Dim z As Integer = 0
+            Dim latest_prev As Tuple(Of Integer, GpsSample) = Nothing
+            Do While z < prev.Length
+                If prev(z) IsNot Nothing AndAlso (latest_prev Is Nothing OrElse prev(z).Item1 > latest_prev.Item1) Then
+                    latest_prev = prev(z)
+                End If
+                If latest_prev Is Nothing OrElse latest_prev.Item2.Coordinate.ZoomToPoint(z).Floor <> g.Coordinate.ZoomToPoint(z).Floor Then
+                    Exit Do
+                End If
+                z = z + 1
+            Loop
+            If z < prev.Length Then 'otherwise it's not significant enough
+                prev(z) = New Tuple(Of Integer, GpsSample)(sample_index, g) 'save the most recent output from this zoom level
+                'need to output to this zoom level
+                Dim tile_size As Integer = LogMinTileSize
+                If Not output_files.ContainsKey(z) Then
+                    output_files.Add(z, New SortedDictionary(Of Integer, Dictionary(Of Point, Integer)))
+                End If
+                If Not output_files(z).ContainsKey(LogMinTileSize) Then
+                    output_files(z).Add(LogMinTileSize, New Dictionary(Of Point, Integer))
+                End If
+                Dim new_point As New Point(g.Coordinate.ZoomToPoint(z).Floor.X >> LogMinTileSize,
+                                           g.Coordinate.ZoomToPoint(z).Floor.Y >> LogMinTileSize)
+                If Not output_files(z)(LogMinTileSize).ContainsKey(new_point) Then
+                    output_files(z)(LogMinTileSize).Add(new_point, 1)
+                Else
+                    output_files(z)(LogMinTileSize)(new_point) += 1
+                End If
+            End If
+            sample_index += 1
+        Next
+        'Now combine tiles
+        For Each zoom_level As Integer In output_files.Keys
+            Const MinSamplesPerFile As Integer = 1024 'min length of json tile file
+            Dim LogTestTileSize As Integer = LogMinTileSize + 1
+            Do While LogTestTileSize <= LogMinTileSize + zoom_level
+                If output_files(zoom_level).ContainsKey(LogTestTileSize - 1) Then
+                    For Each kvp As KeyValuePair(Of Point, Integer) In output_files(zoom_level)(LogTestTileSize - 1)
+                        If Not output_files(zoom_level).ContainsKey(LogTestTileSize) Then
+                            output_files(zoom_level).Add(LogTestTileSize, New Dictionary(Of Point, Integer))
+                        End If
+                        Dim higher_point As New Point(kvp.Key.X \ 2, kvp.Key.Y \ 2)
+                        If Not output_files(zoom_level)(LogTestTileSize).ContainsKey(higher_point) Then
+                            output_files(zoom_level)(LogTestTileSize).Add(higher_point, kvp.Value)
+                        Else
+                            output_files(zoom_level)(LogTestTileSize)(higher_point) += kvp.Value
+                        End If
+                    Next
+                    'now remove lower points if they are too small
+                    For Each higher_point As Point In output_files(zoom_level)(LogTestTileSize).Keys.ToList
+                        Dim use_bigger_tile As Boolean = False
+                        If output_files(zoom_level)(LogTestTileSize)(higher_point) < MinSamplesPerFile * 8 Then
+                            For x As Integer = 0 To 1
+                                For y As Integer = 0 To 1
+                                    Dim p As New Point(higher_point.X * 2 + x, higher_point.Y * 2 + y)
+                                    If (output_files(zoom_level)(LogTestTileSize - 1).ContainsKey(p) AndAlso
+                                        output_files(zoom_level)(LogTestTileSize - 1)(p) < MinSamplesPerFile) Then
+                                        use_bigger_tile = True
+                                        GoTo FoundSmallFile
+                                    End If
+                                Next
+                            Next
+                        End If
+FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the bigger one isn't too much bigger
+                            For x As Integer = 0 To 1
+                                For y As Integer = 0 To 1
+                                    Dim p As New Point(higher_point.X * 2 + x, higher_point.Y * 2 + y)
+                                    output_files(zoom_level)(LogTestTileSize - 1).Remove(p)
+                                Next
+                            Next
+                        Else 'remove the big file
+                            output_files(zoom_level)(LogTestTileSize).Remove(higher_point)
+                        End If
+                    Next
+                    If output_files(zoom_level)(LogTestTileSize - 1).Count = 0 Then
+                        output_files(zoom_level).Remove(LogTestTileSize - 1)
+                    End If
+                    If output_files(zoom_level)(LogTestTileSize).Count = 0 Then
+                        output_files(zoom_level).Remove(LogTestTileSize)
+                    End If
+                End If
+                LogTestTileSize += 1
+            Loop
+        Next
+        Return output_files
+    End Function
+
+
+    Sub WriteGpsSamples(dest_dir As String, gps_samples As IEnumerable(Of GpsSample), TileSizes As SortedDictionary(Of Integer, SortedDictionary(Of Integer, Dictionary(Of Point, Integer))))
+        Dim sample_index As Integer = 0
+        Dim output_files As New SortedDictionary(Of Integer, SortedDictionary(Of Integer, Dictionary(Of Point, IO.StreamWriter)))
+        Dim prev(0 To TileSizes.Count - 1) As Tuple(Of Integer, GpsSample)
+        Dim start_datetime As DateTimeOffset? = Nothing
+        Dim end_datetime As DateTimeOffset? = Nothing
+        For Each g As GpsSample In gps_samples
+            If start_datetime Is Nothing Then
+                start_datetime = g.Datetime
+            End If
+            end_datetime = g.Datetime
+            Dim z As Integer = 0
+            Dim latest_prev As Tuple(Of Integer, GpsSample) = Nothing
+            Do While z < prev.Length
+                If prev(z) IsNot Nothing AndAlso (latest_prev Is Nothing OrElse prev(z).Item1 > latest_prev.Item1) Then
+                    latest_prev = prev(z)
+                End If
+                If latest_prev Is Nothing OrElse latest_prev.Item2.Coordinate.ZoomToPoint(z).Floor <> g.Coordinate.ZoomToPoint(z).Floor Then
+                    Exit Do
+                End If
+                z = z + 1
+            Loop
+            If z < prev.Length Then 'otherwise it's not significant enough
+                prev(z) = New Tuple(Of Integer, GpsSample)(sample_index, g) 'save the most recent output from this zoom level
+                'need to output to this zoom level
+                Dim LogTileSizeGuess As Integer = LogMinTileSize
+                Dim PointGuess As Point = New Point(g.Coordinate.ZoomToPoint(z).Floor.X >> LogTileSizeGuess,
+                                                    g.Coordinate.ZoomToPoint(z).Floor.Y >> LogTileSizeGuess)
+                Do Until (TileSizes.ContainsKey(z) AndAlso
+                          TileSizes(z).ContainsKey(LogTileSizeGuess) AndAlso
+                          TileSizes(z)(LogTileSizeGuess).ContainsKey(PointGuess))
+                    LogTileSizeGuess += 1
+                    PointGuess = New Point(g.Coordinate.ZoomToPoint(z).Floor.X >> LogTileSizeGuess,
+                                           g.Coordinate.ZoomToPoint(z).Floor.Y >> LogTileSizeGuess)
+                Loop
+                Dim current_filename As String = IO.Path.Combine(dest_dir,
+                                                                 TupletoFilename(z, LogTileSizeGuess, PointGuess))
+                If Not output_files.ContainsKey(z) Then
+                    output_files.Add(z, New SortedDictionary(Of Integer, Dictionary(Of Point, IO.StreamWriter)))
+                End If
+                If Not output_files(z).ContainsKey(LogTileSizeGuess) Then
+                    output_files(z).Add(LogTileSizeGuess, New Dictionary(Of Point, IO.StreamWriter))
+                End If
+                If Not output_files(z)(LogTileSizeGuess).ContainsKey(PointGuess) Then
+                    If Not IO.Directory.Exists(IO.Path.GetDirectoryName(current_filename)) Then
+                        IO.Directory.CreateDirectory(IO.Path.GetDirectoryName(current_filename))
+                    End If
+                    output_files(z)(LogTileSizeGuess).Add(PointGuess, IO.File.CreateText(current_filename))
+                    output_files(z)(LogTileSizeGuess)(PointGuess).Write("{" & vbCrLf &
+                                                                        "  ""path"" : [" & vbCrLf &
+                                                                        "    " & GpsSampleToJsonString(sample_index, g))
+                Else
+                    output_files(z)(LogTileSizeGuess)(PointGuess).Write("," & vbCrLf &
+                                                                        "    " & GpsSampleToJsonString(sample_index, g))
+                End If
+            End If
+            sample_index += 1
+        Next
+        For Each zoom_level As Integer In output_files.Keys
+            For Each LogTileSize As Integer In output_files(zoom_level).Keys
+                For Each current_file As IO.StreamWriter In output_files(zoom_level)(LogTileSize).Values
+                    current_file.Write(vbCrLf &
+                                       "  ]" & vbCrLf &
+                                       "}")
+                    current_file.Close()
+                Next
+            Next
+        Next
+        'Dim tile_info As IO.StreamWriter = IO.File.CreateText(IO.Path.Combine(dest_dir, "tile_info.json"))
+        'tile_info.Write("{" & vbCrLf &
+        '                "  ""tiles"" : [")
+        'Dim old_zoom_level As Integer = -1
+
+        'For Each current_tuple As Tuple(Of Integer, Integer, Integer, Integer) In output_files.Keys.OrderBy(Function(s As Tuple(Of Integer, Integer, Integer, Integer)) s)
+        '    If old_zoom_level = -1 Then
+        '        tile_info.Write(vbCrLf &
+        '                        "    [" & TileSizes(current_tuple.Item1))
+        '    ElseIf old_zoom_level <> current_tuple.Item1 Then
+        '        tile_info.Write(vbCrLf &
+        '                        "    ]," & vbCrLf &
+        '                        "    [" & TileSizes(current_tuple.Item1))
+        '    End If
+        '    Dim current_filename As String = TupletoFilename(current_tuple)
+        '    tile_info.Write("," & vbCrLf &
+        '                    "     """ & current_filename & """")
+        '    old_zoom_level = current_tuple.Item1
+        'Next
+        'tile_info.Write(vbCrLf &
+        '                "    ]" & vbCrLf &
+        '                "  ]," & vbCrLf &
+        '                "  ""start_datetime"" : """ & start_datetime.Value.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffffzzz", Globalization.CultureInfo.InvariantCulture) & """," & vbCrLf &
+        '                "  ""end_datetime"" : """ & end_datetime.Value.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffffzzz", Globalization.CultureInfo.InvariantCulture) & """," & vbCrLf &
+        '                "  ""generation_datetime"" : " & Date.UtcNow().Ticks & vbCrLf &
+        '                "}")
+        'tile_info.Close()
+    End Sub
+
     Private Sub btnFilter_Click(sender As System.Object, e As System.EventArgs) Handles btnFilter.Click
         Dim sources As New List(Of String)
         For Each filename As String In txtFilterSrc.Text.Split(";"c)
@@ -166,42 +389,9 @@ Class MainForm
         Next
         Dim destination As String = txtFilterDest.Text.Trim(""""c)
         If System.IO.Directory.Exists(destination) Then
-            Dim source_enumerables As New List(Of IEnumerable(Of String))
-            For Each source As String In sources
-                If System.IO.Directory.Exists(source) Then
-                    Dim csv_filenames As IEnumerable(Of String) = System.IO.Directory.EnumerateFiles(source, "*.csv", IO.SearchOption.AllDirectories)
-                    Dim csv_file_enumerables As IEnumerable(Of IEnumerable(Of String))
-                    csv_file_enumerables = csv_filenames.Select(Function(filename As String)
-                                                                    Return System.IO.File.ReadLines(filename)
-                                                                End Function)
-                    source_enumerables.AddRange(csv_file_enumerables)
-                ElseIf System.IO.File.Exists(source) Then
-                    source_enumerables.Add(System.IO.File.ReadLines(source))
-                Else
-                    Throw New ApplicationException(source + " not found")
-                End If
-            Next
-            Dim csvs_rows As IEnumerable(Of IEnumerable(Of Dictionary(Of String, String)))
-            csvs_rows = source_enumerables.Select(Function(csv_file_lines As IEnumerable(Of String))
-                                                      Return Csv.EnumerateLines(csv_file_lines)
-                                                  End Function)
-            Dim gps_samples_enumerable As IEnumerable(Of IEnumerable(Of GpsSample))
-            gps_samples_enumerable = csvs_rows.Select(Function(csv_rows As IEnumerable(Of IDictionary(Of String, String)))
-                                                          Return csv_rows.Select(Function(dict As IDictionary(Of String, String))
-                                                                                     Return GpsSample.FromDict(dict)
-                                                                                 End Function)
-                                                      End Function)
-            Dim gps_samples As IEnumerable(Of GpsSample)
-            gps_samples = gps_samples_enumerable.MergeSorted()
-            WriteGpsSamples(destination, gps_samples)
-
-            'Dim filtered_gps_samples As IEnumerable(Of GpsSample)
-            'filtered_gps_samples = gps_samples.FilterByPrevious(Function(prev As GpsSample, current As GpsSample)
-            '                                                        Return prev.Coordinate.ZoomToPoint(0).Floor <> current.Coordinate.ZoomToPoint(0).Floor
-            '                                                    End Function)
-            'For Each g As GpsSample In filtered_gps_samples
-            '    Debug.WriteLine(g)
-            'Next
+            Const MaxDepth As Integer = 24
+            Dim TileSizes As SortedDictionary(Of Integer, SortedDictionary(Of Integer, Dictionary(Of Point, Integer))) = GetTileSizes(GetSortedGpsSamples(sources), MaxDepth)
+            WriteGpsSamples(destination, GetSortedGpsSamples(sources), TileSizes)
         Else 'it's a file destination
             Dim c As New Csv
             For Each source As String In sources
@@ -222,9 +412,8 @@ Class MainForm
         End If
     End Sub
 
-    Function ZPtoFilename(zoom As Integer, p As Point) As String
-        Const tile_size As Integer = 2048
-        Return IO.Path.Combine("tiles", zoom.ToString, "tile_" & zoom & "_" & p.X \ tile_size & "_" & p.Y \ tile_size & ".json")
+    Function TupletoFilename(zoom As Integer, LogTileSize As Integer, Tile As Point) As String
+        Return IO.Path.Combine("tiles", zoom.ToString, "tile_" & zoom & "_" & LogTileSize & "_" & Tile.X & "_" & Tile.Y & ".json")
     End Function
 
     Function GpsSampleToJsonString(sample_index As Integer, g As GpsSample) As String
@@ -235,74 +424,6 @@ Class MainForm
                 g.Coordinate.LongitudeInDegrees &
                 "]")
     End Function
-
-    Sub WriteGpsSamples(dest_dir As String, gps_samples As IEnumerable(Of GpsSample))
-        Const MaxZoomDepth As Integer = 24
-        Dim sample_index As Integer = 0
-        Dim output_files As New Dictionary(Of String, IO.StreamWriter)
-        Dim prev(0 To MaxZoomDepth - 1) As Tuple(Of Integer, GpsSample)
-        Dim tile_info As IO.StreamWriter = Nothing
-        Dim start_datetime As DateTimeOffset? = Nothing
-        Dim end_datetime As DateTimeOffset? = Nothing
-        For Each g As GpsSample In gps_samples
-            If start_datetime Is Nothing Then
-                start_datetime = g.Datetime
-            End If
-            end_datetime = g.Datetime
-            Dim z As Integer = 0
-            Dim latest_prev As Tuple(Of Integer, GpsSample) = Nothing
-            Do While z < prev.Length
-                If prev(z) IsNot Nothing AndAlso (latest_prev Is Nothing OrElse prev(z).Item1 > latest_prev.Item1) Then
-                    latest_prev = prev(z)
-                End If
-                If latest_prev Is Nothing OrElse latest_prev.Item2.Coordinate.ZoomToPoint(z).Floor <> g.Coordinate.ZoomToPoint(z).Floor Then
-                    Exit Do
-                End If
-                z = z + 1
-            Loop
-            If z < prev.Length Then
-                prev(z) = New Tuple(Of Integer, GpsSample)(sample_index, g) 'save the most recent output from this zoom level
-                'need to output to this zoom level
-                Dim current_filename As String = IO.Path.Combine(dest_dir, ZPtoFilename(z, g.Coordinate.ZoomToPoint(z).Floor))
-                'output
-                If Not output_files.ContainsKey(current_filename) Then
-                    If Not IO.Directory.Exists(IO.Path.GetDirectoryName(current_filename)) Then
-                        IO.Directory.CreateDirectory(IO.Path.GetDirectoryName(current_filename))
-                    End If
-                    output_files.Add(current_filename, IO.File.CreateText(current_filename))
-                    output_files(current_filename).Write("{" & vbCrLf &
-                                                         "  ""path"" : [" & vbCrLf &
-                                                         "    " & GpsSampleToJsonString(sample_index, g))
-                    If tile_info Is Nothing Then
-                        tile_info = IO.File.CreateText(IO.Path.Combine(dest_dir, "tile_info.json"))
-                        tile_info.Write("{" & vbCrLf &
-                                        "  ""tiles"" : [" & vbCrLf &
-                                        "    """ & ZPtoFilename(z, g.Coordinate.ZoomToPoint(z).Floor).Replace(IO.Path.DirectorySeparatorChar, "/") & """")
-                    Else
-                        tile_info.Write("," & vbCrLf &
-                                        "    """ & ZPtoFilename(z, g.Coordinate.ZoomToPoint(z).Floor).Replace(IO.Path.DirectorySeparatorChar, "/") & """")
-                    End If
-                Else
-                    output_files(current_filename).Write("," & vbCrLf &
-                                                         "    " & GpsSampleToJsonString(sample_index, g))
-                End If
-            End If
-            sample_index += 1
-        Next
-        For Each current_file As IO.StreamWriter In output_files.Values
-            current_file.Write(vbCrLf &
-                               "  ]" & vbCrLf &
-                               "}")
-            current_file.Close()
-        Next
-        tile_info.Write(vbCrLf &
-                        "  ]," & vbCrLf &
-                        "  ""start_datetime"" : """ & start_datetime.Value.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffffzzz", Globalization.CultureInfo.InvariantCulture) & """," & vbCrLf &
-                        "  ""end_datetime"" : """ & end_datetime.Value.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffffzzz", Globalization.CultureInfo.InvariantCulture) & """," & vbCrLf &
-                        "  ""generation_datetime"" : " & Date.UtcNow().Ticks & vbCrLf &
-                        "}")
-        tile_info.Close()
-    End Sub
 #End Region
 
 #Region "Tag Files"
