@@ -32,7 +32,7 @@
 
       img[src^="da"], img[src^="da"].fadeIn {
         animation-name: fadeInFrames;
-        animation-duration: 1s;
+        animation-duration: 400ms;
         animation-iteration-count: 1;
         animation-direction: normal;
         animation-timing-function: linear;
@@ -40,7 +40,7 @@
         animation-fill-mode: forwards;
         
         -moz-animation-name: fadeInFrames;
-        -moz-animation-duration: 1s;
+        -moz-animation-duration: 400ms;
         -moz-animation-iteration-count: 1;
         -moz-animation-direction: normal;
         -moz-animation-timing-function: linear;
@@ -48,7 +48,7 @@
         -moz-animation-fill-mode: forwards;
 
         -webkit-animation-name: fadeInFrames;
-        -webkit-animation-duration: 1s;
+        -webkit-animation-duration: 400ms;
         -webkit-animation-iteration-count: 1;
         -webkit-animation-direction: normal;
         -webkit-animation-timing-function: linear;
@@ -56,7 +56,7 @@
         -webkit-animation-fill-mode: forwards;
 
         -o-animation-name: fadeInFrames;
-        -o-animation-duration: 1s;
+        -o-animation-duration: 400ms;
         -o-animation-iteration-count: 1;
         -o-animation-direction: normal;
         -o-animation-timing-function: linear;
@@ -133,7 +133,7 @@
       }
       
     </style>
-    <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.21/themes/trontastic/jquery-ui.css">
+    <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.21/themes/start/jquery-ui.css">
     <script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?sensor=false"></script>
     <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.js"></script>
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/mootools/1.4.5/mootools-yui-compressed.js"></script>
@@ -329,7 +329,7 @@
                 currentPhoto[6].setMap(map);
                 //markerAnimation(101, currentPhoto);
               }
-              img.src = "thumbnails/" + currentPhoto[0].replace(/.avi$/, ".jpg");
+              img.src = "thumbnails/" + currentPhoto[0].replace(/\.[^.]*$/, ".jpg");
             }
           } else {
             if(currentPhoto.length > 6  && currentPhoto[6]) {
@@ -356,48 +356,50 @@
         var ne = bounds.getNorthEast();
         var sw_point = fromLatLngToPoint(sw);
         var ne_point = fromLatLngToPoint(ne);
-        for(var current_zoom = 0;
-            current_zoom <= zoom_level+1;
-            current_zoom++) {
-          //tile is 2048x2048.  2048 is 2**11.
-          var current_west = bound(sw_point.x,0,255) << current_zoom;
-          var current_south = bound(sw_point.y,0,255) << current_zoom;
-          var current_east = bound(ne_point.x,0,255) << current_zoom;
-          var current_north = bound(ne_point.y,0,255) << current_zoom;
-          for(var i = Math.floor(current_west/2048); i <= Math.floor(current_east/2048); i++) {
-            for(var j = Math.floor(current_north/2048); j <= Math.floor(current_south/2048); j++) {
-              var tile_filename = "tiles/" + current_zoom + '/tile_' + current_zoom + '_' + i + '_' + j + '.json';
-              if(!tileFiles.hasOwnProperty(tile_filename) || tileFiles[tile_filename]) {
-                continue;
-              }
-              force = false; //the JSON call will eventually redraw the route
-              tileFiles[tile_filename] = 1;
-              $.getJSON(tile_filename + "?_=" + tileGenerationDateTime, function(data) {
-                $.each(data, function(key, val) {
-                  if(key == 'path') {
-                    tilesLoaded++;
-                    var newPath = [];
-                    var newBounds = new google.maps.LatLngBounds();
-                    var start_time = startDateTime.getTime();
-                    var end_time = endDateTime.getTime();
-                    gpsPoints = mergeSort(gpsPoints, val,
-                                          function(x,y) {
-                                            return(x[0]-y[0]);
-                                          }, 
-                                          function (point) {
-                                            var current_time = new Date(point[1]).getTime();
-                                            if(start_time <= current_time && current_time < end_time) {
-                                              var newLatLng = new google.maps.LatLng(point[2],point[3]);
-                                              newPath.push(newLatLng);
-                                              newBounds.extend(newLatLng);
-                                            }
-                                          });
-                    if(autoZoom)
-                      map.fitBounds(newBounds);
-                    routePolyline.setPath(newPath);
+        for(current_zoom in tileFiles) {
+          if(current_zoom <= zoom_level) {
+            //tile is 2048x2048.  2048 is 2**11.
+            var current_west = bound(sw_point.x,0,255) << current_zoom;
+            var current_south = bound(sw_point.y,0,255) << current_zoom;
+            var current_east = bound(ne_point.x,0,255) << current_zoom;
+            var current_north = bound(ne_point.y,0,255) << current_zoom;
+            for (logTileSize in tileFiles[current_zoom]) {
+              for(var i = Math.floor(current_west>>logTileSize); i <= Math.floor(current_east>>logTileSize); i++) {
+                for(var j = Math.floor(current_north>>logTileSize); j <= Math.floor(current_south>>logTileSize); j++) {
+                  var tile_filename = "tiles/" + current_zoom + '/tile_' + current_zoom + '_' + logTileSize + "_" + i + '_' + j + '.json';
+                  if(!tileFiles[current_zoom][logTileSize].hasOwnProperty(tile_filename) || tileFiles[tile_filename]) {
+                    continue;
                   }
-                });
-              });
+                  force = false; //the JSON call will eventually redraw the route
+                  tileFiles[tile_filename] = 1;
+                  $.getJSON(tile_filename + "?_=" + tileGenerationDateTime, function(data) {
+                    $.each(data, function(key, val) {
+                      if(key == 'path') {
+                        tilesLoaded++;
+                        var newPath = [];
+                        var newBounds = new google.maps.LatLngBounds();
+                        var start_time = startDateTime.getTime();
+                        var end_time = endDateTime.getTime();
+                        gpsPoints = mergeSort(gpsPoints, val,
+                                              function(x,y) {
+                                                return(x[0]-y[0]);
+                                              }, 
+                                              function (point) {
+                                                var current_time = new Date(point[1]).getTime();
+                                                if(start_time <= current_time && current_time < end_time) {
+                                                  var newLatLng = new google.maps.LatLng(point[2],point[3]);
+                                                  newPath.push(newLatLng);
+                                                  newBounds.extend(newLatLng);
+                                                }
+                                              });
+                        if(autoZoom)
+                          map.fitBounds(newBounds);
+                        routePolyline.setPath(newPath);
+                      }
+                    });
+                  });
+                }
+              }
             }
           }
         }
@@ -455,16 +457,28 @@
           path: new google.maps.MVCArray(),
           strokeColor: $(".ui-slider-range").css("background-color"),
           strokeOpacity: 0.5,
-          strokeWeight: 2,
+          strokeWeight: 5,
           geodesic: true
         }
         routePolyline = new google.maps.Polyline(polyOptions);
+        google.maps.event.addListener(routePolyline, 'mouseover', function (e) {
+          routePolyline.setOptions({strokeOpacity: 1.0});
+        });
+        google.maps.event.addListener(routePolyline, 'mouseout', function (e) {
+          routePolyline.setOptions({strokeOpacity: 0.5});
+        });
         routePolyline.setMap(map);
         $.getJSON("tile_info.json", function(data) {
           $.each(data, function(key, val) {
             if(key == "tiles") {
-              $.each(val, function (index, tile_filename) {
-                tileFiles[tile_filename] = 0;
+              $.each(val, function (zoom_level, val) {
+                tileFiles[zoom_level] = {};
+                $.each(val, function (logTileSize, val) {
+                  tileFiles[zoom_level][logTileSize] = {};
+                  $.each(val, function (index, tileFilename) {
+                    tileFiles[zoom_level][logTileSize][tileFilename] = 0;
+                  });
+                });
               });
             } else if(key == "start_datetime") {
               minDateTime = new Date(val);
