@@ -353,33 +353,39 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
                 Next
             Next
         Next
-        'Dim tile_info As IO.StreamWriter = IO.File.CreateText(IO.Path.Combine(dest_dir, "tile_info.json"))
-        'tile_info.Write("{" & vbCrLf &
-        '                "  ""tiles"" : [")
-        'Dim old_zoom_level As Integer = -1
+        Dim tile_info As IO.StreamWriter = IO.File.CreateText(IO.Path.Combine(dest_dir, "tile_info.json"))
+        tile_info.Write("{" & vbCrLf &
+                        "  ""tiles"" : {")
+        For Each s1 As String In output_files.Keys.Select(Iterator Function(zoom_level As Integer)
+                                                              Yield vbCrLf
+                                                              Yield "    """ & zoom_level & """ : {"
+                                                              For Each s2 As String In output_files(zoom_level).Keys.Select(Iterator Function(LogTileSize As Integer)
+                                                                                                                                Yield vbCrLf & _
+                                                                                                                                      "      """ & LogTileSize & """ : ["
+                                                                                                                                For Each s3 As String In output_files(zoom_level)(LogTileSize).Keys.Select(Iterator Function(p As Point)
+                                                                                                                                                                                                               Yield vbCrLf
+                                                                                                                                                                                                               Yield "        """ & TupletoFilename(zoom_level, LogTileSize, p).Replace(IO.Path.DirectorySeparatorChar, "/") & """"
+                                                                                                                                                                                                           End Function).Interleave(YieldOne(",")).Flatten
+                                                                                                                                    Yield s3
+                                                                                                                                Next
+                                                                                                                                Yield vbCrLf & _
+                                                                                                                                      "      ]"
+                                                                                                                            End Function).Interleave(YieldOne(",")).Flatten
+                                                                  Yield s2
+                                                              Next
 
-        'For Each current_tuple As Tuple(Of Integer, Integer, Integer, Integer) In output_files.Keys.OrderBy(Function(s As Tuple(Of Integer, Integer, Integer, Integer)) s)
-        '    If old_zoom_level = -1 Then
-        '        tile_info.Write(vbCrLf &
-        '                        "    [" & TileSizes(current_tuple.Item1))
-        '    ElseIf old_zoom_level <> current_tuple.Item1 Then
-        '        tile_info.Write(vbCrLf &
-        '                        "    ]," & vbCrLf &
-        '                        "    [" & TileSizes(current_tuple.Item1))
-        '    End If
-        '    Dim current_filename As String = TupletoFilename(current_tuple)
-        '    tile_info.Write("," & vbCrLf &
-        '                    "     """ & current_filename & """")
-        '    old_zoom_level = current_tuple.Item1
-        'Next
-        'tile_info.Write(vbCrLf &
-        '                "    ]" & vbCrLf &
-        '                "  ]," & vbCrLf &
-        '                "  ""start_datetime"" : """ & start_datetime.Value.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffffzzz", Globalization.CultureInfo.InvariantCulture) & """," & vbCrLf &
-        '                "  ""end_datetime"" : """ & end_datetime.Value.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffffzzz", Globalization.CultureInfo.InvariantCulture) & """," & vbCrLf &
-        '                "  ""generation_datetime"" : " & Date.UtcNow().Ticks & vbCrLf &
-        '                "}")
-        'tile_info.Close()
+                                                              Yield vbCrLf & _
+                                                                    "    }"
+                                                          End Function).Interleave(YieldOne(",")).Flatten()
+            tile_info.Write(s1)
+        Next
+        tile_info.Write(vbCrLf &
+                        "  }," & vbCrLf &
+                        "  ""start_datetime"" : """ & start_datetime.Value.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffffzzz", Globalization.CultureInfo.InvariantCulture) & """," & vbCrLf &
+                        "  ""end_datetime"" : """ & end_datetime.Value.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffffzzz", Globalization.CultureInfo.InvariantCulture) & """," & vbCrLf &
+                        "  ""generation_datetime"" : " & Date.UtcNow().Ticks & vbCrLf &
+                        "}")
+        tile_info.Close()
     End Sub
 
     Private Sub btnFilter_Click(sender As System.Object, e As System.EventArgs) Handles btnFilter.Click
@@ -897,6 +903,7 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
                     current_rank += 1
                     'write photo
                     Dim relative_path As String = current_photo.Filename.Substring(rootdir.Length + IO.Path.PathSeparator.ToString.Length)
+                    'TODO: remove any and all extensions on thumbnails and change to jpg
                     If (relative_path.EndsWith(".jpg", StringComparison.CurrentCultureIgnoreCase) OrElse
                         relative_path.EndsWith(".jpeg", StringComparison.CurrentCultureIgnoreCase)) Then
                         'Dim dest_file As String = IO.Path.Combine(destination, "photos", relative_path)

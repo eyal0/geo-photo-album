@@ -98,6 +98,61 @@ Module EnumerableExtensions
         End If
     End Function
 
+    ''' <summary>
+    ''' Output each of the enumerables elements with another element interleaved
+    ''' </summary>
+    ''' <typeparam name="Tin"></typeparam>
+    ''' <param name="e">enumerable input</param>
+    ''' <returns></returns>
+    ''' <remarks></remarks>
+    <Extension()>
+    Iterator Function Interleave(Of Tin)(e As IEnumerable(Of Tin),
+                                         joiner As Tin) As IEnumerable(Of Tin)
+        Dim e1 As IEnumerator(Of Tin) = e.GetEnumerator
+        If e1.MoveNext Then
+            Dim previous As Tin = e1.Current
+            Do While e1.MoveNext()
+                Yield previous
+                Yield joiner
+                previous = e1.Current
+            Loop
+            Yield previous
+        End If
+    End Function
+
+    ''' <summary>
+    ''' Output each of the enumerables elements with another element interleaved
+    ''' </summary>
+    ''' <typeparam name="Tin"></typeparam>
+    ''' <param name="e">enumerable input</param>
+    ''' <returns></returns>
+    ''' <remarks></remarks>
+    <Extension()>
+    Iterator Function Interleave(Of Tin)(e As IEnumerable(Of IEnumerable(Of Tin)),
+                                         joiner As Tin) As IEnumerable(Of Tin)
+        e.Flatten.Interleave(joiner)
+    End Function
+
+
+    ''' <summary>
+    ''' Yield the elements of all the input enumerables in a single enumerable
+    ''' </summary>
+    ''' <returns></returns>
+    ''' <remarks></remarks>
+    <Extension()>
+    Iterator Function Flatten(Of Tin)(e As IEnumerable(Of IEnumerable(Of Tin))) As IEnumerable(Of Tin)
+        Dim e1 As IEnumerator(Of IEnumerable(Of Tin)) = e.GetEnumerator
+        Do While e1.MoveNext
+            For Each t As Tin In e1.Current
+                Yield t
+            Next
+        Loop
+    End Function
+
+    Iterator Function YieldOne(Of Tin)(x As Tin) As IEnumerable(Of Tin)
+        Yield x
+    End Function
+
     Interface IIterator(Of T)
         Inherits IEnumerator(Of T)
         ''' <summary>
