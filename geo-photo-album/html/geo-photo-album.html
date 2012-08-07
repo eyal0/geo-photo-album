@@ -30,42 +30,17 @@
         font-family: "Trebuchet MS", "Helvetica", "Arial",  "Verdana", "sans-serif";
       }
 
-      img[src^="da"]:not(.fadeOut):not(.fadeFull):not(.fadePartial), .fadeIn {
+      img[src^="da"]:not(.fadeIn):not(.fadePartial):not(.fadeOut) {
+        opacity: 0.7;
         animation-name: fadeInFrames;
-        -moz-animation-name: fadeInFrames;
-        -webkit-animation-name: fadeInFrames;
-        -o-animation-name: fadeInFrames;
-      }
-
-      .fadeOut {
-        animation-name: fadeOutFrames;
-        -moz-animation-name: fadeOutFrames;
-        -webkit-animation-name: fadeOutFrames;
-        -o-animation-name: fadeOutFrames;
-      }
-
-      .fadePartial {
-        animation-name: fadePartialFrames;
-        -moz-animation-name: fadePartialFrames;
-        -webkit-animation-name: fadePartialFrames;
-        -o-animation-name: fadePartialFrames;
-      }      
-      
-      .fadeFull {
-        animation-name: fadeFullFrames;
-        -moz-animation-name: fadeFullFrames;
-        -webkit-animation-name: fadeFullFrames;
-        -o-animation-name: fadeFullFrames;
-      }
-      
-      img[src^="da"] {
         animation-duration: 400ms;
         animation-iteration-count: 1;
         animation-direction: normal;
         animation-timing-function: linear;
         animation-play-state: running;
         animation-fill-mode: forwards;
-        
+
+        -moz-animation-name: fadeInFrames;
         -moz-animation-duration: 400ms;
         -moz-animation-iteration-count: 1;
         -moz-animation-direction: normal;
@@ -73,6 +48,7 @@
         -moz-animation-play-state: running;
         -moz-animation-fill-mode: forwards;
 
+        -webkit-animation-name: fadeInFrames;
         -webkit-animation-duration: 400ms;
         -webkit-animation-iteration-count: 1;
         -webkit-animation-direction: normal;
@@ -80,82 +56,42 @@
         -webkit-animation-play-state: running;
         -webkit-animation-fill-mode: forwards;
 
+        -o-animation-name: fadeInFrames;
         -o-animation-duration: 400ms;
         -o-animation-iteration-count: 1;
         -o-animation-direction: normal;
         -o-animation-timing-function: linear;
         -o-animation-play-state: running;
         -o-animation-fill-mode: forwards;
-      }      
+      }
+      @keyframes fadeInFrames { 0% {opacity: 0;} 100% {opacity: 0.7;}}
+      @-moz-keyframes fadeInFrames { 0% {opacity: 0;} 100% {opacity: 0.7;}}
+      @-webkit-keyframes fadeInFrames { 0% {opacity: 0;} 100% {opacity: 0.7;}}
+      @-o-keyframes fadeInFrames { 0% {opacity: 0;} 100% {opacity: 0.7;}}
       
-      @keyframes fadePartialFrames {
-        0% {opacity: 1;}
-        100% {opacity: 0.7;}
-      }
-      @-moz-keyframes fadePartialFrames {
-        0% {opacity: 1;}
-        100% {opacity: 0.7;}
-      }
-      @-webkit-keyframes fadePartialFrames {
-        0% {opacity: 1;}
-        100% {opacity: 0.7;}
-      }
-      @-o-keyframes fadePartialFrames {
-        0% {opacity: 1;}
-        100% {opacity: 0.7;}
+      img[src^="da"].fadeOut {
+        opacity: 0;
+        transition: opacity 1s;
+        -moz-transition: opacity 1s;
+        -webkit-transition: opacity 1s;
+        -o-transition: opacity 1s;
       }
 
-        
-      @keyframes fadeInFrames {
-        0% {opacity: 0;}
-        100% {opacity: 0.7;}
-      }
-      @-moz-keyframes fadeInFrames {
-        0% {opacity: 0;}
-        100% {opacity: 0.7;}
-      }
-      @-webkit-keyframes fadeInFrames {
-        0% {opacity: 0;}
-        100% {opacity: 0.7;}
-      }
-      @-o-keyframes fadeInFrames {
-        0% {opacity: 0;}
-        100% {opacity: 0.7;}
-      }
+      img[src^="da"].fadePartial {
+        opacity: 0.7;
+        transition: opacity 1s;
+        -moz-transition: opacity 1s;
+        -webkit-transition: opacity 1s;
+        -o-transition: opacity 1s;
+      }      
       
-      @keyframes fadeFullFrames {
-        0% {opacity: 0.7;}
-        100% {opacity: 1;}
+      img[src^="da"].fadeIn {
+        opacity: 1;
+        transition: opacity 1s;
+        -moz-transition: opacity 1s;
+        -webkit-transition: opacity 1s;
+        -o-transition: opacity 1s;
       }
-      @-moz-keyframes fadeFullFrames {
-        0% {opacity: 0.7;}
-        100% {opacity: 1;}
-      }
-      @-webkit-keyframes fadeFullFrames {
-        0% {opacity: 0.7;}
-        100% {opacity: 1;}
-      }
-      @-o-keyframes fadeFullFrames {
-        0% {opacity: 0.7;}
-        100% {opacity: 1;}
-      }
-      @keyframes fadeOutFrames {
-        0% {opacity: 0.7;}
-        100% {opacity: 0;}
-      }
-      @-moz-keyframes fadeOutFrames {
-        0% {opacity: 0.7;}
-        100% {opacity: 0;}
-      }
-      @-webkit-keyframes fadeOutFrames {
-        0% {opacity: 0.7;}
-        100% {opacity: 0;}
-      }
-      @-o-keyframes fadeOutFrames {
-        0% {opacity: 0.7;}
-        100% {opacity: 0;}
-      }
-      
     </style>
     <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.21/themes/start/jquery-ui.css">
     <script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?sensor=false"></script>
@@ -289,10 +225,7 @@
       
       function markerAnimation(animation_id, currentPhoto) {
         if(animation_id=="fadeOut") {
-          if($('div[style*="z-index: ' + (1000 + currentPhoto[1]) + ';"] img').hasClass("fadeFull")) {
-          
           $('div[style*="z-index: ' + (1000 + currentPhoto[1]) + ';"] img').removeClass("fadeIn")
-                                                                           .removeClass("fadeFull")
                                                                            .removeClass("fadePartial")
                                                                            .addClass("fadeOut");
           currentPhoto[6].setTitle("");
@@ -301,17 +234,15 @@
             currentPhoto[6].setMap(null);
             currentPhoto[6]=null;
           }
-        } else if(animation_id=="fadeFull") {
+        } else if(animation_id=="fadeIn") {
           $('div[style*="z-index: ' + (1000 + currentPhoto[1]) + ';"] img').removeClass("fadeOut")
-                                                                           .removeClass("fadeIn")
                                                                            .removeClass("fadePartial")
-                                                                           .addClass("fadeFull");
+                                                                           .addClass("fadeIn");
           currentPhoto[6].setTitle(currentPhoto[0]);
           currentPhoto[6].setShape(currentPhoto[7]);
         } else if(animation_id=="fadePartial") {
           $('div[style*="z-index: ' + (1000 + currentPhoto[1]) + ';"] img').removeClass("fadeOut")
                                                                            .removeClass("fadeIn")
-                                                                           .removeClass("fadeFull")
                                                                            .addClass("fadePartial");
           currentPhoto[6].setTitle(currentPhoto[0]);
           currentPhoto[6].setShape(currentPhoto[7]);
@@ -350,31 +281,32 @@
               markerAnimation("fadePartial", currentPhoto);
             } else {
               var img = document.createElement("img");
-              currentPhoto[6] = new google.maps.Marker({position: new google.maps.LatLng(currentPhoto[3],currentPhoto[4]), title:currentPhoto[0],
-                                                          //icon: mi,
-                                                          visible: true,
-                                                          zIndex: 1000 + currentPhoto[1],
-                                                          animation: 1000 //just to make the img instead of canvas
-                                                        });
-              google.maps.event.addListener(currentPhoto[6], 'mouseover', function () {
-                markerAnimation("fadeFull", currentPhoto);
-              });
-              google.maps.event.addListener(currentPhoto[6], 'mouseout', function () {
-                markerAnimation("fadePartial", currentPhoto);
-              });
-              img.onload = function(e) {
-                var side = Math.min(this.width,this.height);
-                var mi = new google.maps.MarkerImage(getBase64Image(this), null, null, new google.maps.Point(side/2,side/2), null);
-                currentPhoto[6].setIcon(mi);
-                currentPhoto[7] = {type: "circle", coords: [side/2,side/2,side/2]};
-                currentPhoto[6].setShape(currentPhoto[7]);
-                currentPhoto[6].setMap(map);
-                //markerAnimation(101, currentPhoto);
-              }
               if(!(/\.(jpg|jpeg)$/i.test(currentPhoto[0]))) {
                 img.src = "thumbnails/" + currentPhoto[0].replace(/\.[^.]*$/, ".jpg");
               } else {
                 img.src = "thumbnails/" + currentPhoto[0];
+              }
+              img.onload = function(e) {
+                var side = Math.min(this.width,this.height);
+                var mi = new google.maps.MarkerImage(getBase64Image(this), null, null, new google.maps.Point(side/2,side/2), null);
+                currentPhoto[7] = {type: "circle", coords: [side/2,side/2,side/2]};
+                currentPhoto[6] = new google.maps.Marker({position: new google.maps.LatLng(currentPhoto[3],currentPhoto[4]), title:currentPhoto[0],
+                                                            icon: mi,
+                                                            visible: true,
+                                                            zIndex: 1000 + currentPhoto[1],
+                                                            animation: 1000, //just to make the img instead of canvas
+                                                            shape: currentPhoto[7],
+                                                            map: map
+                                                          });
+                google.maps.event.addListener(currentPhoto[6], 'mouseover', function () {
+                  markerAnimation("fadeIn", currentPhoto);
+                });
+                google.maps.event.addListener(currentPhoto[6], 'mouseout', function () {
+                  markerAnimation("fadePartial", currentPhoto);
+                });
+                /*google.maps.event.addListener(map, 'idle', function () {
+                  markerAnimation("fadePartial", currentPhoto);
+                });*/
               }
             }
           } else {
