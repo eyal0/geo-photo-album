@@ -322,9 +322,13 @@
         routePolyline.setOptions({strokeColor: $(".ui-slider-range").css("background-color")});
         if(tilesLoaded > 40) {
           console.debug("reset tiles")
-          $.each(tileFiles, function (key, val) {
-            tileFiles[key] = 0;
-          });
+          $.each(tileFiles, function (zoom_level, val) {
+                $.each(val, function (logTileSize, val) {
+                  $.each(val, function (index, tileFilename) {
+                    tileFiles[zoom_level][logTileSize][tileFilename] = 0;
+                  });
+                });
+              });
           gpsPoints = [];
           tilesLoaded = 0;
         }
@@ -345,7 +349,8 @@
               for(var i = Math.floor(current_west>>logTileSize); i <= Math.floor(current_east>>logTileSize); i++) {
                 for(var j = Math.floor(current_north>>logTileSize); j <= Math.floor(current_south>>logTileSize); j++) {
                   var tile_filename = "tiles/" + current_zoom + '/tile_' + current_zoom + '_' + logTileSize + "_" + i + '_' + j + '.json';
-                  if(!tileFiles[current_zoom][logTileSize].hasOwnProperty(tile_filename) || tileFiles[tile_filename]) {
+                  if(!tileFiles[current_zoom][logTileSize].hasOwnProperty(tile_filename) ||
+                      tileFiles[current_zoom][logTileSize][tile_filename]) {
                     continue;
                   }
                   force = false; //the JSON call will eventually redraw the route
