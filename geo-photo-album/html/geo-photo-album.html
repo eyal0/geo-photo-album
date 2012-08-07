@@ -30,7 +30,7 @@
         font-family: "Trebuchet MS", "Helvetica", "Arial",  "Verdana", "sans-serif";
       }
 
-      img[src^="da"]:not(.fadeIn):not(.fadeOut):not(.fadeFull):not(.fadePartial), .fadeIn {
+      img[src^="da"]:not(.fadeOut):not(.fadeFull):not(.fadePartial), .fadeIn {
         animation-name: fadeInFrames;
         -moz-animation-name: fadeInFrames;
         -webkit-animation-name: fadeInFrames;
@@ -288,14 +288,9 @@
       }
       
       function markerAnimation(animation_id, currentPhoto) {
-        if(animation_id=="fadeIn") {
-          $('div[style*="z-index: ' + (1000 + currentPhoto[1]) + ';"] img').removeClass("fadeOut")
-                                                                           .removeClass("fadeFull")
-                                                                           .removeClass("fadePartial")
-                                                                           .addClass("fadeIn");
-          currentPhoto[6].setTitle(currentPhoto[0]);
-          currentPhoto[6].setShape(currentPhoto[7]);
-        } else if(animation_id=="fadeOut") {
+        if(animation_id=="fadeOut") {
+          if($('div[style*="z-index: ' + (1000 + currentPhoto[1]) + ';"] img').hasClass("fadeFull")) {
+          
           $('div[style*="z-index: ' + (1000 + currentPhoto[1]) + ';"] img').removeClass("fadeIn")
                                                                            .removeClass("fadeFull")
                                                                            .removeClass("fadePartial")
@@ -352,7 +347,7 @@
           if(currentPhoto[5]) {
             photoInfoDisplayed.push(currentIndex);
             if(currentPhoto.length > 6 && currentPhoto[6]) {
-              markerAnimation("fadeIn", currentPhoto);
+              markerAnimation("fadePartial", currentPhoto);
             } else {
               var img = document.createElement("img");
               currentPhoto[6] = new google.maps.Marker({position: new google.maps.LatLng(currentPhoto[3],currentPhoto[4]), title:currentPhoto[0],
@@ -376,7 +371,11 @@
                 currentPhoto[6].setMap(map);
                 //markerAnimation(101, currentPhoto);
               }
-              img.src = "thumbnails/" + currentPhoto[0].replace(/\.[^.]*$/, ".jpg");
+              if(!(/\.(jpg|jpeg)$/i.test(currentPhoto[0]))) {
+                img.src = "thumbnails/" + currentPhoto[0].replace(/\.[^.]*$/, ".jpg");
+              } else {
+                img.src = "thumbnails/" + currentPhoto[0];
+              }
             }
           } else {
             if(currentPhoto.length > 6  && currentPhoto[6]) {
