@@ -146,29 +146,25 @@
         return point;
       };
 
-      function mergeSort(A, B, compare, perElem) {
+      function mergeSortGpsPoints(A, B) {
         var ret = [];
         var i = 0;
         var j = 0;
         while(i < A.length && j < B.length) {
-          if(compare(A[i], B[j]) <= 0) {
+          if((A[i][0]- B[j][0]) <= 0) {
             ret.push(A[i]);
-            perElem(A[i]);
             i++;
           } else {
             ret.push(B[j]);
-            perElem(B[j]);
             j++;
           }
         }
         while (i < A.length) {
           ret.push(A[i]);
-          perElem(A[i]);
           i++;
         }
         while (j < B.length) {
           ret.push(B[j]);
-          perElem(B[j]);
           j++;
         }
         return(ret);
@@ -317,18 +313,18 @@
           //document.body.appendChild(img);
         });
       }
-      
+
       function load_polyline(force, autoZoom) {
         routePolyline.setOptions({strokeColor: $(".ui-slider-range").css("background-color")});
         if(tilesLoaded > 40) {
-          console.debug("reset tiles")
+          console.debug("reset tiles");
           $.each(tileFiles, function (zoom_level, val) {
-                $.each(val, function (logTileSize, val) {
-                  $.each(val, function (index, tileFilename) {
-                    tileFiles[zoom_level][logTileSize][tileFilename] = 0;
-                  });
-                });
+            $.each(val, function (logTileSize, val) {
+              $.each(val, function (tileFilename, alreadyLoaded) {
+                tileFiles[zoom_level][logTileSize][tileFilename] = 0;
               });
+            });
+          });
           gpsPoints = [];
           tilesLoaded = 0;
         }
@@ -354,7 +350,7 @@
                     continue;
                   }
                   force = false; //the JSON call will eventually redraw the route
-                  tileFiles[tile_filename] = 1;
+                  tileFiles[current_zoom][logTileSize][tile_filename] = 1;
                   $.getJSON(tile_filename + "?_=" + tileGenerationDateTime, function(data) {
                     $.each(data, function(key, val) {
                       if(key == 'path') {
@@ -363,21 +359,8 @@
                         var newBounds = new google.maps.LatLngBounds();
                         var start_time = startDateTime.getTime();
                         var end_time = endDateTime.getTime();
-                        gpsPoints = mergeSort(gpsPoints, val,
-                                              function(x,y) {
-                                                return(x[0]-y[0]);
-                                              }, 
-                                              function (point) {
-                                                var current_time = new Date(point[1]).getTime();
-                                                if(start_time <= current_time && current_time < end_time) {
-                                                  var newLatLng = new google.maps.LatLng(point[2],point[3]);
-                                                  newPath.push(newLatLng);
-                                                  newBounds.extend(newLatLng);
-                                                }
-                                              });
-                        if(autoZoom)
-                          map.fitBounds(newBounds);
-                        routePolyline.setPath(newPath);
+                        gpsPoints = mergeSortGpsPoints(gpsPoints, val);
+                        updatePath(true, autoZoom);
                       }
                     });
                   });
@@ -387,24 +370,48 @@
           }
         }
         if(force || autoZoom) { //we must re-draw the route because there were no JSON calls that will do it.
-          var newBounds = new google.maps.LatLngBounds();
-          var start_time = startDateTime.getTime();
-          var end_time = endDateTime.getTime();
-          var start_index = gpsPoints.indexOfLambda(function(x) { return(start_time <= new Date(x[1]).getTime()); });
-          var end_index   = gpsPoints.indexOfLambda(function(x) { return(end_time < new Date(x[1]).getTime()); });
-          var newPath = [];
-          for(var i = start_index; i < end_index; i++) {
-              var newLatLng = new google.maps.LatLng(gpsPoints[i][2], gpsPoints[i][3]);
-              newPath.push(newLatLng);
-              newBounds.extend(newLatLng);
-            }
-          if(autoZoom)
-            map.fitBounds(newBounds);
-          if(force)
-            routePolyline.setPath(newPath);
+          updatePath(force, autoZoom);
         }
       }
-
+      
+      updatePath = function() {
+        var currentPath = [];
+        var currentBounds = new google.maps.LatLngBounds();
+        var currentStartTime = null;
+        var currentEndTime = null;
+        var startGpsIndex = null;
+        var endGpsIndex = null;
+        return function(force, autoZoom, keepGoing) {
+          if(keepGoing ||
+             currentStartTime === null || currentStartTime != startDateTime.getTime() ||
+             currentEndTime === null || currentEndTime != endDateTime.getTime()) {
+            var currentStartTime = startDateTime.getTime();
+            var currentEndTime = endDateTime.getTime();
+            startGpsIndex = gpsPoints.indexOfLambda(function(x) { return(currentStartTime <= new Date(x[1]).getTime()); });
+            endGpsIndex = gpsPoints.indexOfLambda(function(x) { return(currentEndTime < new Date(x[1]).getTime()); });
+            currentPath = [];
+            currentBounds = new google.maps.LatLngBounds();
+          }
+          var currentTime = (new Date()).getTime();
+          while(startGpsIndex < endGpsIndex && ((new Date()).getTime()-currentTime < 100)) {
+            if(gpsPoints[startGpsIndex].length == 4) {
+              gpsPoints[startGpsIndex].push(new google.maps.LatLng(gpsPoints[startGpsIndex][2],gpsPoints[startGpsIndex][3]));
+            }
+            currentPath.push(gpsPoints[startGpsIndex][4]);
+            currentBounds.extend(gpsPoints[startGpsIndex][4]);
+            startGpsIndex++;
+          }
+          if(startGpsIndex >= endGpsIndex) {
+            if(autoZoom)
+              map.fitBounds(currentBounds);
+            if(force)
+              routePolyline.setPath(currentPath);
+          } else {
+            setTimeout(function () { updatePath(force, autoZoom, true); }, 0);
+          }
+        }
+      }();
+      
       function getURLParameter(url, name) {
         var search = /[^?](.*)/.exec(url)[1] || "";
         return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search)||[,""])[1].replace(/\+/g, '%20'))||null;
