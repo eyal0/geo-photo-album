@@ -64,6 +64,10 @@
     <Reference Include="ExifLib">
       <HintPath>..\packages\ExifLib.1.2.4436.20486\lib\net20\ExifLib.dll</HintPath>
     </Reference>
+    <Reference Include="Interop.DexterLib">
+      <HintPath>..\Interop.DexterLib.dll</HintPath>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System" />
@@ -129,6 +133,8 @@
     <Compile Include="PointD.vb" />
     <Compile Include="SHA1.vb" />
     <Compile Include="SHGetFileInfo.vb" />
+    <Compile Include="Video.vb" />
+    <Compile Include="WinStructs.vb" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="MainForm.resx">

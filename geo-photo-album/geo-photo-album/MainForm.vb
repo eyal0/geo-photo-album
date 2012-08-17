@@ -744,10 +744,39 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
         Property Rank As Integer = -1
         Property LatLng As Coordinate? = Nothing
         Property Orientation As Integer = 1
+        Property Passwords As List(Of String)
+        Property ImageKey As Byte()
+        Property EncryptedImageKeys As List(Of Tuple(Of Byte(), Byte()))
 
         Public Function CompareTo(other As PhotoInfo) As Integer Implements IComparable(Of PhotoInfo).CompareTo
             Return DTO.CompareTo(other.DTO)
         End Function
+    End Class
+
+    Class PasswordInfo
+        Sub New()
+            'do nothing
+        End Sub
+
+        Sub New(Password As String)
+            Me.Password = Password
+            Const AUTH_BYTE_COUNT As Integer = 16
+            Const KEY_BYTE_COUNT As Integer = 16
+            Const SALT_BYTE_COUNT As Integer = 8
+            Dim pbkdf2 As New System.Security.Cryptography.Rfc2898DeriveBytes(Me.Password, SALT_BYTE_COUNT)
+            Dim AuthAndKey As Byte() = pbkdf2.GetBytes(AUTH_BYTE_COUNT + KEY_BYTE_COUNT)
+            Auth = New Byte(0 To AUTH_BYTE_COUNT - 1) {}
+            Buffer.BlockCopy(AuthAndKey, 0, Auth, 0, AUTH_BYTE_COUNT)
+            Key = New Byte(0 To KEY_BYTE_COUNT - 1) {}
+            Buffer.BlockCopy(AuthAndKey, AUTH_BYTE_COUNT, Key, 0, KEY_BYTE_COUNT)
+            Salt = pbkdf2.Salt
+            Iterations = pbkdf2.IterationCount
+        End Sub
+        Property Password As String
+        Property Iterations As Integer
+        Property Salt As Byte()
+        Property Key As Byte()
+        Property Auth As Byte()
     End Class
 
     Public Shared Sub ResizeJpeg(ByVal filePathSource As String, filePathDestination As String, ByVal maxWidth As Integer, ByVal maxHeight As Integer, orientation As Integer)
@@ -824,7 +853,7 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
         For Each filename As String In txtFilterSrc.Text.Split(";"c)
             sources.Add(filename.Trim(""""c))
         Next
-        Dim destination As String = txtFilterDest.Text.Trim(""""c)
+        Dim destination As String = txtOutputDest.Text.Trim(""""c)
         Dim source_enumerables As New List(Of IEnumerable(Of String))
         For Each source As String In sources
             If System.IO.Directory.Exists(source) Then
@@ -877,7 +906,18 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
                 If kvp.Value.ContainsKey("GpsLatitude") AndAlso kvp.Value.ContainsKey("GpsLongitude") Then
                     new_photo.LatLng = Coordinate.FromDegrees(kvp.Value("GpsLatitude").ToDouble, kvp.Value("GpsLongitude").ToDouble)
                 End If
-                all_photos.Add(new_photo)
+                If kvp.Value.ContainsKey("Password") Then
+                    new_photo.Passwords = New List(Of String)
+                    If kvp.Value("Password").IsString Then
+                        new_photo.Passwords.Add(kvp.Value("Password").ToString)
+                    ElseIf kvp.Value("Password").IsArray Then
+                        For Each p As String In kvp.Value("Password")
+                            new_photo.Passwords.Add(p)
+                        Next
+                    End If
+
+                End If
+                    all_photos.Add(new_photo)
             Next
             all_photos.Sort() 'sorted by datetimeoffset only!
             Dim sample_iterator As Iterator(Of GpsSample) = gps_samples.GetIterator()
@@ -894,35 +934,59 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
                                                                                     (sample_iterator.Current.Datetime - prev_sample.Datetime).TotalSeconds)
                 End If
             Next
-            'later here we will sort by rank from the shootout
+            'TODO: later here we will sort by rank from the shootout
             Dim current_rank As Integer = 0
             Dim photo_info As IO.TextWriter = Nothing
+            Dim passwords As New Dictionary(Of String, PasswordInfo)
             If IO.Directory.Exists(txtOutputDest.Text) Then
                 For Each current_photo As PhotoInfo In all_photos
                     current_photo.Rank = current_rank
                     current_rank += 1
                     'write photo
                     Dim relative_path As String = current_photo.Filename.Substring(rootdir.Length + IO.Path.PathSeparator.ToString.Length)
-                    'TODO: remove any and all extensions on thumbnails and change to jpg
+                    Dim thumbnail_dest_file As String
                     If (relative_path.EndsWith(".jpg", StringComparison.CurrentCultureIgnoreCase) OrElse
                         relative_path.EndsWith(".jpeg", StringComparison.CurrentCultureIgnoreCase)) Then
-                        'Dim dest_file As String = IO.Path.Combine(destination, "photos", relative_path)
-                        'If Not IO.Directory.Exists(IO.Path.GetDirectoryName(dest_file)) Then
-                        '    IO.Directory.CreateDirectory(IO.Path.GetDirectoryName(dest_file))
-                        'End If
-                        'ResizeJpeg(current_photo.Filename, dest_file, 1600, 1600, current_photo.Orientation)
-                        'dest_file = IO.Path.Combine(destination, "thumbnails", relative_path)
-                        'If Not IO.Directory.Exists(IO.Path.GetDirectoryName(dest_file)) Then
-                        '    IO.Directory.CreateDirectory(IO.Path.GetDirectoryName(dest_file))
-                        'End If
-                        'ResizeJpeg(current_photo.Filename, dest_file, 64, 64, current_photo.Orientation)
-                    ElseIf relative_path.EndsWith(".avi", StringComparison.CurrentCultureIgnoreCase) Then
-                        'Dim b As Bitmap = GetFrameFromVideo(current_photo.Filename, 0.3)
-                        'Dim dest_file As String = IO.Path.Combine(destination, "thumbnails", relative_path.Remove(relative_path.Length - 4) + ".jpg")
-                        'If Not IO.Directory.Exists(IO.Path.GetDirectoryName(dest_file)) Then
-                        '    IO.Directory.CreateDirectory(IO.Path.GetDirectoryName(dest_file))
-                        'End If
-                        'ResizeJpeg(b, dest_file, 64, 64, current_photo.Orientation)
+                        thumbnail_dest_file = IO.Path.Combine(destination, "thumbnails", relative_path.Substring(0, relative_path.LastIndexOf(".")) + ".jpg")
+                    Else
+                        thumbnail_dest_file = IO.Path.Combine(destination, "thumbnails", relative_path)
+                    End If
+                    If Not IO.Directory.Exists(IO.Path.GetDirectoryName(thumbnail_dest_file)) Then
+                        IO.Directory.CreateDirectory(IO.Path.GetDirectoryName(thumbnail_dest_file))
+                    End If
+                    Dim dest_file As String = IO.Path.Combine(destination, "photos", relative_path)
+                    If Not IO.Directory.Exists(IO.Path.GetDirectoryName(dest_file)) Then
+                        IO.Directory.CreateDirectory(IO.Path.GetDirectoryName(dest_file))
+                    End If
+                    If (relative_path.EndsWith(".jpg", StringComparison.CurrentCultureIgnoreCase) OrElse
+                        relative_path.EndsWith(".jpeg", StringComparison.CurrentCultureIgnoreCase)) Then
+                        ResizeJpeg(current_photo.Filename, dest_file, 1600, 1600, current_photo.Orientation)
+                        ResizeJpeg(current_photo.Filename, thumbnail_dest_file, 64, 64, current_photo.Orientation)
+                    ElseIf (relative_path.EndsWith(".avi", StringComparison.CurrentCultureIgnoreCase) OrElse
+                            relative_path.EndsWith(".mov", StringComparison.CurrentCultureIgnoreCase)) Then
+                        Dim b As Bitmap = GetFrameFromVideo(current_photo.Filename, 0.3)
+                        IO.File.Copy(current_photo.Filename, dest_file)
+                        ResizeJpeg(b, thumbnail_dest_file, 64, 64, current_photo.Orientation)
+                    End If
+                    'encrypt if needed
+                    If current_photo.Passwords IsNot Nothing Then
+                        'encrypt the file with a random key
+                        current_photo.ImageKey = AES_Encrypt_File(dest_file, dest_file + ".aes")
+                        IO.File.Delete(dest_file) 'delete unencrypted file
+                        AES_Encrypt_File(thumbnail_dest_file, thumbnail_dest_file + ".aes", current_photo.ImageKey)
+                        IO.File.Delete(thumbnail_dest_file) 'delete unencrypted file
+                        'encrypt the ImageKey with each password
+                        current_photo.EncryptedImageKeys = New List(Of Tuple(Of Byte(), Byte()))
+                        For Each current_password As String In current_photo.Passwords
+                            If Not passwords.ContainsKey(current_password) Then
+                                passwords.Add(current_password, New PasswordInfo(current_password))
+                            End If
+                            Dim ImageKeyEncrypted As Byte() = AES_ECB_Encrypt(passwords(current_password).Key, current_photo.ImageKey)
+                            current_photo.ImageKey(0) = CType((current_photo.ImageKey(0) + 1) Mod 256, Byte)
+                            Dim ImageKeyPlus1Encrypted As Byte() = AES_ECB_Encrypt(passwords(current_password).Key, current_photo.ImageKey)
+                            current_photo.ImageKey(0) = CType((current_photo.ImageKey(0) - 1) Mod 256, Byte) 'put it back
+                            current_photo.EncryptedImageKeys.Add(New Tuple(Of Byte(), Byte())(ImageKeyEncrypted, ImageKeyPlus1Encrypted))
+                        Next
                     End If
                     If photo_info Is Nothing Then
                         photo_info = IO.File.CreateText(IO.Path.Combine(destination, "photo_info.json"))
@@ -935,6 +999,12 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
                     End If
                 Next
                 photo_info.Write(vbCrLf &
+                                 "  ]," & vbCrLf)
+                photo_info.Write("  ""passwords"" : [" & vbCrLf)
+                photo_info.Write(String.Join("," & vbCrLf, passwords.Values.Select(Function(p As PasswordInfo)
+                                                                                       Return "    " & PasswordInfoToJsonString(p)
+                                                                                   End Function)))
+                photo_info.Write(vbCrLf &
                                  "  ]" & vbCrLf &
                                  "}")
                 photo_info.Close()
@@ -942,14 +1012,70 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
         End If
     End Sub
 
+    Function PasswordInfoToJsonString(p As PasswordInfo) As String
+        Return "[""" & BytesToHexString(p.Salt) & """,""" & BytesToHexString(p.Auth) & """]"
+    End Function
+
+    'returns the key that was used for encryption
+    Function AES_Encrypt_File(SourceFilename As String, DestinationFilename As String, Optional ImageKey As Byte() = Nothing) As Byte()
+        Dim AES As New System.Security.Cryptography.AesManaged
+        AES.Mode = Security.Cryptography.CipherMode.CBC
+        If ImageKey IsNot Nothing Then
+            AES.Key = ImageKey
+        Else
+            AES.KeySize = 128 'will generate a random key
+        End If
+        Dim Encryptor As Security.Cryptography.ICryptoTransform = AES.CreateEncryptor
+        Dim plain_bytes As Byte() = System.IO.File.ReadAllBytes(SourceFilename)
+        Dim cipher_bytes As Byte() = Encryptor.TransformFinalBlock(plain_bytes, 0, plain_bytes.Length)
+        Dim output_bytes(0 To cipher_bytes.Length + AES.IV.Length - 1) As Byte
+        Buffer.BlockCopy(AES.IV, 0, output_bytes, 0, AES.IV.Length)
+        Buffer.BlockCopy(cipher_bytes, 0, output_bytes, AES.IV.Length, cipher_bytes.Length)
+        IO.File.WriteAllBytes(DestinationFilename, output_bytes)
+        Return AES.Key
+    End Function
+
+    Function AES_ECB_Encrypt(Key As Byte(), Input As Byte(), Optional start As Integer = 0, Optional length As Integer = -1) As Byte()
+        If length = -1 Then
+            length = Input.Length
+        End If
+        Dim AES As New System.Security.Cryptography.AesManaged
+        AES.Key = Key
+        AES.Mode = Security.Cryptography.CipherMode.ECB
+        AES.Padding = Security.Cryptography.PaddingMode.None
+        Dim Encryptor As Security.Cryptography.ICryptoTransform = AES.CreateEncryptor()
+        Dim Output As Byte() = Encryptor.TransformFinalBlock(Input, start, length)
+        Dim IVandOutput(0 To Output.Length + AES.IV.Length - 1) As Byte
+        Buffer.BlockCopy(AES.IV, 0, IVandOutput, 0, AES.IV.Length)
+        Buffer.BlockCopy(Output, 0, IVandOutput, AES.IV.Length, Output.Length)
+        Return IVandOutput
+    End Function
+
+    Private Function BytesToHexString(input() As Byte) As String
+        Dim ret As String = ""
+        For i As Integer = 0 To input.Length - 1
+            ret += input(i).ToString("x2")
+        Next
+        Return ret
+    End Function
+
     Function PhotoInfoToJsonString(photoinfo As PhotoInfo, relative_path As String) As String
-        Return ("[" &
-                """" & relative_path.Replace("\", "\\") & """," &
-                photoinfo.Rank.ToString(Globalization.CultureInfo.InvariantCulture) & "," &
-                """" & photoinfo.DTO.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffffzzz", Globalization.CultureInfo.InvariantCulture) & """," &
-                photoinfo.LatLng.Value.LatitudeInDegrees.ToString(Globalization.CultureInfo.InvariantCulture) & "," &
-                photoinfo.LatLng.Value.LongitudeInDegrees.ToString(Globalization.CultureInfo.InvariantCulture) &
-                "]")
+        Dim ret As String = ""
+        ret &= "["
+        ret &= """" & relative_path.Replace("\", "\\") & ""","
+        ret &= photoinfo.Rank.ToString(Globalization.CultureInfo.InvariantCulture) & ","
+        ret &= """" & photoinfo.DTO.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffffzzz", Globalization.CultureInfo.InvariantCulture) & ""","
+        ret &= photoinfo.LatLng.Value.LatitudeInDegrees.ToString(Globalization.CultureInfo.InvariantCulture) & ","
+        ret &= photoinfo.LatLng.Value.LongitudeInDegrees.ToString(Globalization.CultureInfo.InvariantCulture)
+        If photoinfo.EncryptedImageKeys IsNot Nothing Then
+            ret &= ",["
+            ret &= String.Join(",", photoinfo.EncryptedImageKeys.Select(Function(t As Tuple(Of Byte(), Byte()))
+                                                                            Return "[""" & BytesToHexString(t.Item1) & """,""" & BytesToHexString(t.Item2) & """]"
+                                                                        End Function))
+            ret &= "]"
+        End If
+        ret &= "]"
+        Return ret
     End Function
 #End Region
 End Class

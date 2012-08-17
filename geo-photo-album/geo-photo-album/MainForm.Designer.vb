@@ -57,9 +57,6 @@ Partial Class MainForm
         Me.btnDetailView = New System.Windows.Forms.Button()
         Me.btnFilterTags = New System.Windows.Forms.Button()
         Me.txtTagFilter = New System.Windows.Forms.TextBox()
-        Me.lvFileTags = New GeoPhotoAlbums.FileView()
-        Me.ColumnHeader1 = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
-        Me.ColumnHeader2 = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
         Me.LargeImageList = New System.Windows.Forms.ImageList(Me.components)
         Me.SmallImageList = New System.Windows.Forms.ImageList(Me.components)
         Me.SplitContainer5 = New System.Windows.Forms.SplitContainer()
@@ -78,7 +75,9 @@ Partial Class MainForm
         Me.btnOutputSrcFile = New System.Windows.Forms.Button()
         Me.lblOutputSrc = New System.Windows.Forms.Label()
         Me.txtOutputSrc = New System.Windows.Forms.TextBox()
-        Me.BackgroundWorker1 = New System.ComponentModel.BackgroundWorker()
+        Me.lvFileTags = New GeoPhotoAlbums.FileView()
+        Me.ColumnHeader1 = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
+        Me.ColumnHeader2 = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
         Me.MainTab.SuspendLayout()
         Me.TabSortCsv.SuspendLayout()
         Me.TabFilterCsv.SuspendLayout()
@@ -402,7 +401,7 @@ Partial Class MainForm
         Me.txtTagFile.Name = "txtTagFile"
         Me.txtTagFile.Size = New System.Drawing.Size(932, 20)
         Me.txtTagFile.TabIndex = 20
-        Me.txtTagFile.Text = "C:\Users\Eyal\Pictures\World Tour 2011-2012\photo_info.json"
+        Me.txtTagFile.Text = "C:\Users\Eyal\Pictures\World Tour 2011-2012\WorldTourGPA.json"
         '
         'SplitContainer1
         '
@@ -480,33 +479,6 @@ Partial Class MainForm
         Me.txtTagFilter.Size = New System.Drawing.Size(582, 20)
         Me.txtTagFilter.TabIndex = 0
         Me.txtTagFilter.Text = "C:\Users\Eyal\Pictures\World Tour 2011-2012\Thailand\Bangkok"
-        '
-        'lvFileTags
-        '
-        Me.lvFileTags.Columns.AddRange(New System.Windows.Forms.ColumnHeader() {Me.ColumnHeader1, Me.ColumnHeader2})
-        Me.lvFileTags.Dock = System.Windows.Forms.DockStyle.Fill
-        Me.lvFileTags.FullRowSelect = True
-        Me.lvFileTags.GridLines = True
-        Me.lvFileTags.LargeImageList = Me.LargeImageList
-        Me.lvFileTags.Location = New System.Drawing.Point(0, 0)
-        Me.lvFileTags.my_json = Nothing
-        Me.lvFileTags.Name = "lvFileTags"
-        Me.lvFileTags.ShowGroups = False
-        Me.lvFileTags.Size = New System.Drawing.Size(649, 523)
-        Me.lvFileTags.SmallImageList = Me.SmallImageList
-        Me.lvFileTags.TabIndex = 0
-        Me.lvFileTags.UseCompatibleStateImageBehavior = False
-        Me.lvFileTags.View = System.Windows.Forms.View.Details
-        '
-        'ColumnHeader1
-        '
-        Me.ColumnHeader1.Text = "File"
-        Me.ColumnHeader1.Width = 100
-        '
-        'ColumnHeader2
-        '
-        Me.ColumnHeader2.Text = "Tags"
-        Me.ColumnHeader2.Width = 300
         '
         'LargeImageList
         '
@@ -651,7 +623,7 @@ Partial Class MainForm
         Me.txtOutputDest.Name = "txtOutputDest"
         Me.txtOutputDest.Size = New System.Drawing.Size(943, 20)
         Me.txtOutputDest.TabIndex = 20
-        Me.txtOutputDest.Text = "C:\Users\Eyal\Pictures\World Tour 2011-2012\output"
+        Me.txtOutputDest.Text = "C:\Users\Eyal\Pictures\World Tour 2011-2012\output2"
         '
         'btnOutputDestDir
         '
@@ -700,7 +672,34 @@ Partial Class MainForm
         Me.txtOutputSrc.Name = "txtOutputSrc"
         Me.txtOutputSrc.Size = New System.Drawing.Size(943, 20)
         Me.txtOutputSrc.TabIndex = 15
-        Me.txtOutputSrc.Text = "C:\Users\Eyal\Pictures\World Tour 2011-2012\photo_info.json"
+        Me.txtOutputSrc.Text = "C:\Users\Eyal\Pictures\World Tour 2011-2012\TestGPA.json"
+        '
+        'lvFileTags
+        '
+        Me.lvFileTags.Columns.AddRange(New System.Windows.Forms.ColumnHeader() {Me.ColumnHeader1, Me.ColumnHeader2})
+        Me.lvFileTags.Dock = System.Windows.Forms.DockStyle.Fill
+        Me.lvFileTags.FullRowSelect = True
+        Me.lvFileTags.GridLines = True
+        Me.lvFileTags.LargeImageList = Me.LargeImageList
+        Me.lvFileTags.Location = New System.Drawing.Point(0, 0)
+        Me.lvFileTags.my_json = Nothing
+        Me.lvFileTags.Name = "lvFileTags"
+        Me.lvFileTags.ShowGroups = False
+        Me.lvFileTags.Size = New System.Drawing.Size(649, 523)
+        Me.lvFileTags.SmallImageList = Me.SmallImageList
+        Me.lvFileTags.TabIndex = 0
+        Me.lvFileTags.UseCompatibleStateImageBehavior = False
+        Me.lvFileTags.View = System.Windows.Forms.View.Details
+        '
+        'ColumnHeader1
+        '
+        Me.ColumnHeader1.Text = "File"
+        Me.ColumnHeader1.Width = 100
+        '
+        'ColumnHeader2
+        '
+        Me.ColumnHeader2.Text = "Tags"
+        Me.ColumnHeader2.Width = 300
         '
         'MainForm
         '
@@ -796,6 +795,5 @@ Partial Class MainForm
     Friend WithEvents btnOutputSrcFile As System.Windows.Forms.Button
     Friend WithEvents lblOutputSrc As System.Windows.Forms.Label
     Friend WithEvents txtOutputSrc As System.Windows.Forms.TextBox
-    Friend WithEvents BackgroundWorker1 As System.ComponentModel.BackgroundWorker
 
 End Class
