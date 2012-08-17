@@ -108,11 +108,22 @@
         document.write(unescape("%3Cscript src='/path/to/your/jquery' type='text/javascript'%3E%3C/script%3E"));
       }
     </script>
+    <script type="text/javascript" src="core.js"></script>
+    <script type="text/javascript" src="cipher-core.js"></script>
+    <script type="text/javascript" src="sha1.js"></script>
+    <script type="text/javascript" src="hmac.js"></script>
+    <script type="text/javascript" src="pbkdf2.js"></script>
+    <script type="text/javascript" src="aes.js"></script>
+    <script type="text/javascript" src="mode-ecb.js"></script>
+    <script type="text/javascript" src="pad-nopadding.js"></script>
+    <script type="text/javascript" src="enc-base64.js"></script>
     <script type="text/javascript">
+      'use strict';
       var map;
       var routePolyline;
       var gpsPoints = [];
       var photoInfo = [];
+      var passwords = [];
       var photoInfoDisplayed = [];
       var tileFiles = {};
       var tilesLoaded = 0;
@@ -224,25 +235,54 @@
           $('div[style*="z-index: ' + (1000 + currentPhoto[1]) + ';"] img').removeClass("fadeIn")
                                                                            .removeClass("fadePartial")
                                                                            .addClass("fadeOut");
-          currentPhoto[6].setTitle("");
-          currentPhoto[6].setShape({type: "circle", coords: [0,0,0]});
+          currentPhoto["marker"].setTitle("");
+          currentPhoto["marker"].setShape({type: "circle", coords: [0,0,0]});
           if($('div[style*="z-index: ' + (1000 + currentPhoto[1]) + ';"] img').css("opacity") == 0) {
-            currentPhoto[6].setMap(null);
-            currentPhoto[6]=null;
+            currentPhoto["marker"].setMap(null);
+            currentPhoto["marker"]=null;
           }
         } else if(animation_id=="fadeIn") {
           $('div[style*="z-index: ' + (1000 + currentPhoto[1]) + ';"] img').removeClass("fadeOut")
                                                                            .removeClass("fadePartial")
                                                                            .addClass("fadeIn");
-          currentPhoto[6].setTitle(currentPhoto[0]);
-          currentPhoto[6].setShape(currentPhoto[7]);
+          currentPhoto["marker"].setTitle(currentPhoto[0]);
+          currentPhoto["marker"].setShape(currentPhoto["shape"]);
         } else if(animation_id=="fadePartial") {
           $('div[style*="z-index: ' + (1000 + currentPhoto[1]) + ';"] img').removeClass("fadeOut")
                                                                            .removeClass("fadeIn")
                                                                            .addClass("fadePartial");
-          currentPhoto[6].setTitle(currentPhoto[0]);
-          currentPhoto[6].setShape(currentPhoto[7]);
+          currentPhoto["marker"].setTitle(currentPhoto[0]);
+          currentPhoto["marker"].setShape(currentPhoto["shape"]);
         }
+      }
+      
+      function decryptHex(keyHex, ivCipherHex) {
+        var iv = CryptoJS.enc.Hex.parse(ivCipherHex.substr(0, 128/4));
+        var cipher = CryptoJS.enc.Hex.parse(ivCipherHex.substr(128/4));
+        var key = CryptoJS.enc.Hex.parse(keyHex);
+        var aesDecryptor = CryptoJS.algo.AES.createDecryptor(key, { iv: iv, mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.NoPadding });
+        var ciphertext0 = aesDecryptor.process(cipher);
+        var ciphertext1 = aesDecryptor.finalize();
+        return(CryptoJS.enc.Hex.stringify(ciphertext0.concat(ciphertext1)));
+      }
+      
+      function getImageKey(currentPhoto) {
+        var imageKey;
+        $.each(currentPhoto[5], function(index, imageKeyPair) {
+          $.each(passwords, function(index, key) {
+            //check if key decrypts the pair
+            var key0 = decryptHex(key, imageKeyPair[0]);
+            var key1 = decryptHex(key, imageKeyPair[1]);
+            if((parseInt(key0.substr(0,2),16)+1)%255 == parseInt(key1.substr(0,2),16) &&
+               key0.substr(2) == key1.substr(2)) {
+              imageKey = key0; //found!
+              return(false);
+            }
+          });
+          if(imageKey)
+            return(false);
+        });
+        return(imageKey);
       }
       
       function load_photos() {
@@ -250,34 +290,63 @@
         photoInfoDisplayed = [];
         //first, fill photoInfoDisplayed with the indicies of all photos to show
         $.each(photoInfo, function(currentIndex, currentPhoto) {
-          currentPhoto[5] = false;
+          currentPhoto["displayed"] = false;
           var currentLatLng = new google.maps.LatLng(currentPhoto[3],currentPhoto[4]);
           var current_time = (new Date(currentPhoto[2])).getTime();
           if(current_time >= startDateTime.getTime() && current_time < endDateTime.getTime() && bounds.contains(currentLatLng)) {
             var currentPoint = fromLatLngToPoint(currentLatLng);
-            currentPhoto[5] = true;
-            for(var otherIndex = 0; otherIndex < photoInfoDisplayed.length; otherIndex++) {
-              var otherPhoto = photoInfo[photoInfoDisplayed[otherIndex]];
-              if(otherPhoto[5]) {
-                var otherPoint = fromLatLngToPoint(new google.maps.LatLng(otherPhoto[3],otherPhoto[4]));
-                var x2 = (currentPoint.x-otherPoint.x) * (1<<map.getZoom());
-                x2 = x2*x2;
-                var y2 = (currentPoint.y-otherPoint.y) * (1<<map.getZoom());
-                y2 = y2*y2;
-                if(x2+y2 < 48*48) {
-                  currentPhoto[5] = false;
-                  break;
+            currentPhoto["displayed"] = true;
+            if(currentPhoto.length > 5 && !currentPhoto["imageKey"]) {
+              var imageKey = getImageKey(currentPhoto);
+              if(imageKey)
+                currentPhoto["imageKey"] = imageKey;
+              else
+                currentPhoto["displayed"] = false;
+            }
+            if(currentPhoto["displayed"]) {
+              for(var otherIndex = 0; otherIndex < photoInfoDisplayed.length; otherIndex++) {
+                var otherPhoto = photoInfo[photoInfoDisplayed[otherIndex]];
+                if(otherPhoto["displayed"]) {
+                  var otherPoint = fromLatLngToPoint(new google.maps.LatLng(otherPhoto[3],otherPhoto[4]));
+                  var x2 = (currentPoint.x-otherPoint.x) * (1<<map.getZoom());
+                  x2 = x2*x2;
+                  var y2 = (currentPoint.y-otherPoint.y) * (1<<map.getZoom());
+                  y2 = y2*y2;
+                  if(x2+y2 < 32*32) {
+                    currentPhoto["displayed"] = false;
+                    break;
+                  }
                 }
               }
             }
           }
-          if(currentPhoto[5]) {
+          if(currentPhoto["displayed"]) {
             photoInfoDisplayed.push(currentIndex);
-            if(currentPhoto.length > 6 && currentPhoto[6]) {
+            if(currentPhoto.hasOwnProperty("marker") && currentPhoto["marker"]) {
               markerAnimation("fadePartial", currentPhoto);
             } else {
               var img = document.createElement("img");
-              if(!(/\.(jpg|jpeg)$/i.test(currentPhoto[0]))) {
+              if(currentPhoto["imageKey"]) { //must decrypt this image, we have imageKey to do it
+                var xhr = new XMLHttpRequest();
+                xhr.overrideMimeType('image/gif; charset=x-user-defined');
+                xhr.onreadystatechange = function() {
+                  if(xhr.readyState == 4) {
+                    var key = CryptoJS.enc.Hex.parse(currentPhoto["imageKey"]);
+                    var iv = CryptoJS.enc.Latin1.parse(xhr.response.substr(0,16));
+                    var cipher = CryptoJS.enc.Latin1.parse(xhr.response.substr(16));
+                    var aesEncryptor = CryptoJS.algo.AES.createDecryptor(key, { iv: iv });
+                    var ciphertext0 = aesEncryptor.process(cipher);
+                    var ciphertext1 = aesEncryptor.finalize();
+                    img.src = 'data:image/png;base64,' + CryptoJS.enc.Base64.stringify(ciphertext0.concat(ciphertext1));
+                  }
+                }
+                if(!(/\.(jpg|jpeg)$/i.test(currentPhoto[0]))) {
+                  xhr.open("GET", "thumbnails/" + currentPhoto[0].replace(/\.[^.]*$/, ".jpg") + ".aes", true);
+                } else {
+                  xhr.open("GET", "thumbnails/" + currentPhoto[0] + ".aes", true);
+                }
+                xhr.send();
+              } else if(!(/\.(jpg|jpeg)$/i.test(currentPhoto[0]))) {
                 img.src = "thumbnails/" + currentPhoto[0].replace(/\.[^.]*$/, ".jpg");
               } else {
                 img.src = "thumbnails/" + currentPhoto[0];
@@ -285,28 +354,25 @@
               img.onload = function(e) {
                 var side = Math.min(this.width,this.height);
                 var mi = new google.maps.MarkerImage(getBase64Image(this), null, null, new google.maps.Point(side/2,side/2), null);
-                currentPhoto[7] = {type: "circle", coords: [side/2,side/2,side/2]};
-                currentPhoto[6] = new google.maps.Marker({position: new google.maps.LatLng(currentPhoto[3],currentPhoto[4]), title:currentPhoto[0],
-                                                            icon: mi,
-                                                            visible: true,
-                                                            zIndex: 1000 + currentPhoto[1],
-                                                            animation: 1000, //just to make the img instead of canvas
-                                                            shape: currentPhoto[7],
-                                                            map: map
-                                                          });
-                google.maps.event.addListener(currentPhoto[6], 'mouseover', function () {
+                currentPhoto["shape"] = {type: "circle", coords: [side/2,side/2,side/2]};
+                currentPhoto["marker"] = new google.maps.Marker({position: new google.maps.LatLng(currentPhoto[3],currentPhoto[4]), title:currentPhoto[0],
+                  icon: mi,
+                  visible: true,
+                  zIndex: 1000 + currentPhoto[1],
+                  animation: 1000, //just to make the img instead of canvas
+                  shape: currentPhoto["shape"],
+                  map: map
+                });
+                google.maps.event.addListener(currentPhoto["marker"], 'mouseover', function () {
                   markerAnimation("fadeIn", currentPhoto);
                 });
-                google.maps.event.addListener(currentPhoto[6], 'mouseout', function () {
+                google.maps.event.addListener(currentPhoto["marker"], 'mouseout', function () {
                   markerAnimation("fadePartial", currentPhoto);
                 });
-                /*google.maps.event.addListener(map, 'idle', function () {
-                  markerAnimation("fadePartial", currentPhoto);
-                });*/
               }
             }
           } else {
-            if(currentPhoto.length > 6  && currentPhoto[6]) {
+            if(currentPhoto.hasOwnProperty("marker") && currentPhoto["marker"]) {
               markerAnimation("fadeOut", currentPhoto);
             }
           }
@@ -334,14 +400,14 @@
         var ne = bounds.getNorthEast();
         var sw_point = fromLatLngToPoint(sw);
         var ne_point = fromLatLngToPoint(ne);
-        for(current_zoom in tileFiles) {
+        for(var current_zoom in tileFiles) {
           if(current_zoom <= zoom_level) {
             //tile is 2048x2048.  2048 is 2**11.
             var current_west = bound(sw_point.x,0,255) << current_zoom;
             var current_south = bound(sw_point.y,0,255) << current_zoom;
             var current_east = bound(ne_point.x,0,255) << current_zoom;
             var current_north = bound(ne_point.y,0,255) << current_zoom;
-            for (logTileSize in tileFiles[current_zoom]) {
+            for (var logTileSize in tileFiles[current_zoom]) {
               for(var i = Math.floor(current_west>>logTileSize); i <= Math.floor(current_east>>logTileSize); i++) {
                 for(var j = Math.floor(current_north>>logTileSize); j <= Math.floor(current_south>>logTileSize); j++) {
                   var tile_filename = "tiles/" + current_zoom + '/tile_' + current_zoom + '_' + logTileSize + "_" + i + '_' + j + '.json';
@@ -374,7 +440,7 @@
         }
       }
       
-      updatePath = function() {
+      var updatePath = function() {
         var currentPath = [];
         var currentBounds = new google.maps.LatLngBounds();
         var currentStartTime = null;
@@ -626,6 +692,15 @@
           $.each(data, function(key, val) {
             if(key == 'photos') {
               photoInfo = val;
+            } else if(key == 'passwords') {
+              $.each(val, function(index, passPair) {
+                var salt = CryptoJS.enc.Hex.parse(passPair[0]);
+                var auth = CryptoJS.enc.Hex.parse(passPair[1]);
+                var authAndKey = CryptoJS.PBKDF2("SecretFiles", salt, { keySize: 256/32, iterations: 1000 });
+                if(authAndKey.toString().substr(0, 128/4) == auth) {
+                  passwords.push(authAndKey.toString().substr(128/4));
+                }
+              });
             }
           });
         });
