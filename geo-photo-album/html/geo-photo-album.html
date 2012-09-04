@@ -108,21 +108,22 @@
         document.write(unescape("%3Cscript src='/path/to/your/jquery' type='text/javascript'%3E%3C/script%3E"));
       }
     </script>
-    <script type="text/javascript" src="core.js"></script>
-    <script type="text/javascript" src="cipher-core.js"></script>
-    <script type="text/javascript" src="sha1.js"></script>
-    <script type="text/javascript" src="hmac.js"></script>
-    <script type="text/javascript" src="pbkdf2.js"></script>
-    <script type="text/javascript" src="aes.js"></script>
-    <script type="text/javascript" src="mode-ecb.js"></script>
-    <script type="text/javascript" src="pad-nopadding.js"></script>
-    <script type="text/javascript" src="enc-base64.js"></script>
+    <script src="core.js"></script>
+    <script src="cipher-core.js"></script>
+    <script src="sha1.js"></script>
+    <script src="hmac.js"></script>
+    <script src="pbkdf2.js"></script>
+    <script src="aes.js"></script>
+    <script src="mode-ecb.js"></script>
+    <script src="pad-nopadding.js"></script>
+    <script src="enc-base64.js"></script>
     <script type="text/javascript">
       'use strict';
       var map;
       var routePolyline;
       var gpsPoints = [];
       var photoInfo = [];
+      var passwordInfo = [];
       var passwords = [];
       var photoInfoDisplayed = [];
       var tileFiles = {};
@@ -269,10 +270,10 @@
       function getImageKey(currentPhoto) {
         var imageKey;
         $.each(currentPhoto[5], function(index, imageKeyPair) {
-          $.each(passwords, function(index, key) {
+          $.each(passwords, function(index, plainAndDerived) {
             //check if key decrypts the pair
-            var key0 = decryptHex(key, imageKeyPair[0]);
-            var key1 = decryptHex(key, imageKeyPair[1]);
+            var key0 = decryptHex(plainAndDerived[1], imageKeyPair[0]);
+            var key1 = decryptHex(plainAndDerived[1], imageKeyPair[1]);
             if((parseInt(key0.substr(0,2),16)+1)%255 == parseInt(key1.substr(0,2),16) &&
                key0.substr(2) == key1.substr(2)) {
               imageKey = key0; //found!
@@ -624,7 +625,8 @@
                             '<input type="text" id="end_datepicker" />' +
                             '<label for="auto_zoom">Auto-Zoom</label><input type="checkbox" id="auto_zoom" checked />' + 
                             '<input type="button" value="Zoom" onClick="load_polyline(false,true);" />' + 
-                            '<img src="images/play.png" onclick="playRoute();">';
+                            '<img src="images/play.png" onclick="playRoute();">' + 
+                            '<label for="#password_text">Passwords:</label><input type="text" id="password_text" />';
             div.id = "date_range";
             map.controls[google.maps.ControlPosition.BOTTOM_LEFT].push(div);
             $(div.getElementById("date_slider")).slider({animate: true, "step": 1, min: 0, max: days+1, values: [0, days+1], range: true});
@@ -684,6 +686,36 @@
                                              },
                                             });
             $(div.getElementById("end_datepicker")).datepicker("setDate", maxDateTime);
+            $(div.getElementById("password_text")).on('input', function(e) {
+              var passwordsToTest = $.map($(div.getElementById("password_text")).val().split(','), function(testPassword) { return($.trim(testPassword)); });
+              passwords = $.grep(passwords, function(plainAndDerived) { //remove passwords that are no longer in the textbox
+                return(passwordsToTest.indexOf(plainAndDerived[0]) != -1);
+              });
+              passwordsToTest = $.grep(passwordsToTest, function(testPassword) {
+                if(testPassword == "")
+                  return(0);
+                for(var i=0; i < passwords.length; i++) {
+                  if(testPassword == passwords[i][0]) {
+                    return(0);  //don't test, we have it already
+                  }
+                }
+                return(1);
+              });
+              $.each(passwordsToTest, function(index, testPassword) {
+                $.each(passwordInfo, function(index, passPair) {
+                  var salt = CryptoJS.enc.Hex.parse(passPair[0]);
+                  var keyHex = CryptoJS.PBKDF2(testPassword, salt, { keySize: 128/32, iterations: 1000 }).toString();
+                  //check if key decrypts the pair
+                  var key0 = decryptHex(keyHex, passPair[1]);
+                  var key1 = decryptHex(keyHex, passPair[2]);
+                  if((parseInt(key0.substr(0,2),16)+1)%255 == parseInt(key1.substr(0,2),16) &&
+                     key0.substr(2) == key1.substr(2)) {  //found!
+                    passwords.push([testPassword, keyHex]);
+                    //return(false);  //comment in case the password is used twice with different salts.  Weird.
+                  }
+                });
+              });
+            });
           }
           google.maps.event.addListener(map, 'idle', load_polyline);
           google.maps.event.addListener(map, 'idle', load_photos);
@@ -693,14 +725,7 @@
             if(key == 'photos') {
               photoInfo = val;
             } else if(key == 'passwords') {
-              $.each(val, function(index, passPair) {
-                var salt = CryptoJS.enc.Hex.parse(passPair[0]);
-                var auth = CryptoJS.enc.Hex.parse(passPair[1]);
-                var authAndKey = CryptoJS.PBKDF2("SecretFiles", salt, { keySize: 256/32, iterations: 1000 });
-                if(authAndKey.toString().substr(0, 128/4) == auth) {
-                  passwords.push(authAndKey.toString().substr(128/4));
-                }
-              });
+              passwordInfo = val;
             }
           });
         });
