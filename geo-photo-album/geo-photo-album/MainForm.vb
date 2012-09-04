@@ -760,15 +760,10 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
 
         Sub New(Password As String)
             Me.Password = Password
-            Const AUTH_BYTE_COUNT As Integer = 16
             Const KEY_BYTE_COUNT As Integer = 16
             Const SALT_BYTE_COUNT As Integer = 8
             Dim pbkdf2 As New System.Security.Cryptography.Rfc2898DeriveBytes(Me.Password, SALT_BYTE_COUNT)
-            Dim AuthAndKey As Byte() = pbkdf2.GetBytes(AUTH_BYTE_COUNT + KEY_BYTE_COUNT)
-            Auth = New Byte(0 To AUTH_BYTE_COUNT - 1) {}
-            Buffer.BlockCopy(AuthAndKey, 0, Auth, 0, AUTH_BYTE_COUNT)
-            Key = New Byte(0 To KEY_BYTE_COUNT - 1) {}
-            Buffer.BlockCopy(AuthAndKey, AUTH_BYTE_COUNT, Key, 0, KEY_BYTE_COUNT)
+            Key = pbkdf2.GetBytes(KEY_BYTE_COUNT)
             Salt = pbkdf2.Salt
             Iterations = pbkdf2.IterationCount
         End Sub
@@ -776,7 +771,6 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
         Property Iterations As Integer
         Property Salt As Byte()
         Property Key As Byte()
-        Property Auth As Byte()
     End Class
 
     Public Shared Sub ResizeJpeg(ByVal filePathSource As String, filePathDestination As String, ByVal maxWidth As Integer, ByVal maxHeight As Integer, orientation As Integer)
@@ -947,9 +941,9 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
                     Dim thumbnail_dest_file As String
                     If (relative_path.EndsWith(".jpg", StringComparison.CurrentCultureIgnoreCase) OrElse
                         relative_path.EndsWith(".jpeg", StringComparison.CurrentCultureIgnoreCase)) Then
-                        thumbnail_dest_file = IO.Path.Combine(destination, "thumbnails", relative_path.Substring(0, relative_path.LastIndexOf(".")) + ".jpg")
-                    Else
                         thumbnail_dest_file = IO.Path.Combine(destination, "thumbnails", relative_path)
+                    Else
+                        thumbnail_dest_file = IO.Path.Combine(destination, "thumbnails", relative_path.Substring(0, relative_path.LastIndexOf(".")) + ".jpg")
                     End If
                     If Not IO.Directory.Exists(IO.Path.GetDirectoryName(thumbnail_dest_file)) Then
                         IO.Directory.CreateDirectory(IO.Path.GetDirectoryName(thumbnail_dest_file))
@@ -965,8 +959,10 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
                     ElseIf (relative_path.EndsWith(".avi", StringComparison.CurrentCultureIgnoreCase) OrElse
                             relative_path.EndsWith(".mov", StringComparison.CurrentCultureIgnoreCase)) Then
                         Dim b As Bitmap = GetFrameFromVideo(current_photo.Filename, 0.3)
-                        IO.File.Copy(current_photo.Filename, dest_file)
+                        IO.File.Copy(current_photo.Filename, dest_file, True)
                         ResizeJpeg(b, thumbnail_dest_file, 64, 64, current_photo.Orientation)
+                    Else
+                        Debug.WriteLine("Unknown file type " & relative_path)
                     End If
                     'encrypt if needed
                     If current_photo.Passwords IsNot Nothing Then
@@ -1013,7 +1009,13 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
     End Sub
 
     Function PasswordInfoToJsonString(p As PasswordInfo) As String
-        Return "[""" & BytesToHexString(p.Salt) & """,""" & BytesToHexString(p.Auth) & """]"
+        Dim RandomBytes(0 To 15) As Byte
+        Security.Cryptography.RandomNumberGenerator.Create.GetBytes(RandomBytes)
+        Dim RandomBytesEncrypted As Byte() = AES_ECB_Encrypt(p.Key, RandomBytes)
+        RandomBytes(0) = CType((RandomBytes(0) + 1) Mod 256, Byte)
+        Dim RandomBytesPlus1Encrypted As Byte() = AES_ECB_Encrypt(p.Key, RandomBytes)
+        RandomBytes(0) = CType((RandomBytes(0) - 1) Mod 256, Byte)
+        Return "[""" & BytesToHexString(p.Salt) & """,""" & BytesToHexString(RandomBytesEncrypted) & """,""" & BytesToHexString(RandomBytesPlus1Encrypted) & """]"
     End Function
 
     'returns the key that was used for encryption
@@ -1077,5 +1079,10 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
         ret &= "]"
         Return ret
     End Function
+
+    Private Sub btnOutputSrcFile_Click(sender As Object, e As EventArgs) Handles btnOutputSrcFile.Click
+        SourceFile_Click(sender, e, txtOutputSrc)
+    End Sub
 #End Region
+
 End Class
