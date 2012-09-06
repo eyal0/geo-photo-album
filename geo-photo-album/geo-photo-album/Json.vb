@@ -26,12 +26,16 @@ Public Class Json
         Me.Add(kvp)
     End Sub
 
+    Sub New(ParamArray jsons() As Json)
+        json_ = New List(Of Json)(jsons)
+    End Sub
+
     Sub MergeFile(f As String)
         Dim new_json As Json = FromFile(f)
         MergeJson(new_json)
     End Sub
 
-    Private Sub MergeJson(new_json As Json)
+    Public Sub MergeJson(new_json As Json)
         If json_ Is Nothing Then
             json_ = new_json.json_
         ElseIf IsObject AndAlso new_json.IsObject Then
@@ -598,9 +602,14 @@ Public Class Json
         ToArray.Add(item)
     End Sub
 
-    Public Function Contains(item As Json) As Boolean Implements ICollection(Of Json).Contains
-        If IsNothing Then Return False Else Return ToArray.Contains(item, New JsonComparer)
+    Public Sub Add(ParamArray items() As Json)
+        For Each Item As Json In items
+            Me.Add(Item)
+        Next
+    End Sub
 
+    Public Function Contains(item As Json) As Boolean Implements ICollection(Of Json).Contains
+        If IsNothing Then Return False Else Return ToArray.Contains(item)
     End Function
 
     Public Sub CopyTo(array() As Json, arrayIndex As Integer) Implements ICollection(Of Json).CopyTo
@@ -678,17 +687,5 @@ Public Class Json
         Else
             Throw New ArgumentException("Can't GetHashCode")
         End If
-    End Function
-End Class
-
-Public Class JsonComparer
-    Implements IEqualityComparer(Of Json)
-
-    Public Function Equals1(x As Json, y As Json) As Boolean Implements IEqualityComparer(Of Json).Equals
-        Return x = y
-    End Function
-
-    Public Function GetHashCode1(obj As Json) As Integer Implements IEqualityComparer(Of Json).GetHashCode
-        Return obj.GetHashCode
     End Function
 End Class

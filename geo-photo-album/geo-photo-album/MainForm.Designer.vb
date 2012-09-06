@@ -623,7 +623,7 @@ Partial Class MainForm
         Me.txtOutputDest.Name = "txtOutputDest"
         Me.txtOutputDest.Size = New System.Drawing.Size(943, 20)
         Me.txtOutputDest.TabIndex = 20
-        Me.txtOutputDest.Text = "C:\Users\Eyal\Pictures\World Tour 2011-2012\output2"
+        Me.txtOutputDest.Text = "C:\Users\Eyal\Pictures\World Tour 2011-2012\output"
         '
         'btnOutputDestDir
         '
@@ -672,7 +672,7 @@ Partial Class MainForm
         Me.txtOutputSrc.Name = "txtOutputSrc"
         Me.txtOutputSrc.Size = New System.Drawing.Size(943, 20)
         Me.txtOutputSrc.TabIndex = 15
-        Me.txtOutputSrc.Text = "C:\Users\Eyal\Pictures\World Tour 2011-2012\TestGPA.json"
+        Me.txtOutputSrc.Text = "C:\Users\Eyal\Pictures\World Tour 2011-2012\WorldTourGPA.json"
         '
         'lvFileTags
         '
