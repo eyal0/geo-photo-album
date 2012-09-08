@@ -92,8 +92,25 @@
         -webkit-transition: opacity 1s;
         -o-transition: opacity 1s;
       }
+      #gallery {
+        background: #808080;
+        width: auto;
+        height: auto;
+        padding: 30px;
+      }
+      #gallery-shadow {
+        background: #808080;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: none;
+      }
+      
     </style>
     <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.21/themes/start/jquery-ui.css">
+    <link rel="stylesheet" type="text/css" href="AD-Gallery/lib/jquery.ad-gallery.css">
     <script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?sensor=false"></script>
     <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.js"></script>
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/mootools/1.4.5/mootools-yui-compressed.js"></script>
@@ -108,15 +125,35 @@
         document.write(unescape("%3Cscript src='/path/to/your/jquery' type='text/javascript'%3E%3C/script%3E"));
       }
     </script>
-    <script src="core.js"></script>
-    <script src="cipher-core.js"></script>
-    <script src="sha1.js"></script>
-    <script src="hmac.js"></script>
-    <script src="pbkdf2.js"></script>
-    <script src="aes.js"></script>
-    <script src="mode-ecb.js"></script>
-    <script src="pad-nopadding.js"></script>
-    <script src="enc-base64.js"></script>
+    <script src="crypto-js/core.js"></script>
+    <script src="crypto-js/cipher-core.js"></script>
+    <script src="crypto-js/sha1.js"></script>
+    <script src="crypto-js/hmac.js"></script>
+    <script src="crypto-js/pbkdf2.js"></script>
+    <script src="crypto-js/aes.js"></script>
+    <script src="crypto-js/mode-ecb.js"></script>
+    <script src="crypto-js/pad-nopadding.js"></script>
+    <script src="crypto-js/enc-base64.js"></script>
+    <script type="text/javascript" src="AD-Gallery/lib/jquery.ad-gallery.js"></script>
+
+    <!-- Add mousewheel plugin (this is optional) -->
+    <script type="text/javascript" src="fancyBox/lib/jquery.mousewheel-3.0.6.pack.js"></script>
+
+    <!-- Add fancyBox main JS and CSS files -->
+    <script type="text/javascript" src="fancyBox/source/jquery.fancybox.js?v=2.1.0"></script>
+    <link rel="stylesheet" type="text/css" href="fancyBox/source/jquery.fancybox.css?v=2.1.0" media="screen" />
+
+    <!-- Add Button helper (this is optional) -->
+    <link rel="stylesheet" type="text/css" href="fancyBox/source/helpers/jquery.fancybox-buttons.css?v=1.0.3" />
+    <script type="text/javascript" src="fancyBox/source/helpers/jquery.fancybox-buttons.js?v=1.0.3"></script>
+
+    <!-- Add Thumbnail helper (this is optional) -->
+    <link rel="stylesheet" type="text/css" href="fancyBox/source/helpers/jquery.fancybox-thumbs.css?v=1.0.6" />
+    <script type="text/javascript" src="fancyBox/source/helpers/jquery.fancybox-thumbs.js?v=1.0.6"></script>
+
+    <!-- Add Media helper (this is optional) -->
+    <script type="text/javascript" src="fancyBox/source/helpers/jquery.fancybox-media.js?v=1.0.3"></script>
+
     <script type="text/javascript">
       'use strict';
       var map;
@@ -132,6 +169,7 @@
       var maxDateTime;
       var startDateTime;
       var endDateTime;
+      var photoInfoWindow;
       var tileGenerationDateTime = Date.parse(new Date()); //in case the tile file doesn't have it
       function degreesToRadians(deg) {
         return deg * (Math.PI / 180);
@@ -292,6 +330,7 @@
         //first, fill photoInfoDisplayed with the indicies of all photos to show
         $.each(photoInfo, function(currentIndex, currentPhoto) {
           currentPhoto["displayed"] = false;
+          currentPhoto["hides"] = [];
           var currentLatLng = new google.maps.LatLng(currentPhoto[3],currentPhoto[4]);
           var current_time = (new Date(currentPhoto[2])).getTime();
           if(current_time >= startDateTime.getTime() && current_time < endDateTime.getTime() && bounds.contains(currentLatLng)) {
@@ -315,6 +354,7 @@
                   y2 = y2*y2;
                   if(x2+y2 < 32*32) {
                     currentPhoto["displayed"] = false;
+                    otherPhoto["hides"].push(currentPhoto);
                     break;
                   }
                 }
@@ -360,7 +400,7 @@
                   icon: mi,
                   visible: true,
                   zIndex: 1000 + currentPhoto[1],
-                  animation: 1000, //just to make the img instead of canvas
+                  optimized: false, //just to make the img instead of canvas
                   shape: currentPhoto["shape"],
                   map: map
                 });
@@ -369,6 +409,41 @@
                 });
                 google.maps.event.addListener(currentPhoto["marker"], 'mouseout', function () {
                   markerAnimation("fadePartial", currentPhoto);
+                });
+                google.maps.event.addListener(currentPhoto["marker"], 'click', function () {
+                  var imgSrc;
+                  if(!(/\.(jpg|jpeg)$/i.test(currentPhoto[0]))) {
+                    imgSrc = currentPhoto[0].replace(/\.[^.]*$/, ".jpg");
+                  } else {
+                    imgSrc = currentPhoto[0];
+                  }
+                  var fancyPhotos = [];
+                  fancyPhotos.push({href: 'photos/' + imgSrc, title: currentPhoto[0], thumbnail: 'thumbnails/' + imgSrc});
+                  $.each(currentPhoto["hides"], function(index, hiddenPhoto) {
+                    var imgSrc;
+                    if(!(/\.(jpg|jpeg)$/i.test(hiddenPhoto[0]))) {
+                      imgSrc = hiddenPhoto[0].replace(/\.[^.]*$/, ".jpg");
+                    } else {
+                      imgSrc = hiddenPhoto[0];
+                    }
+                    fancyPhotos.push({href: 'photos/' + imgSrc, title: hiddenPhoto[0], thumbnail: 'thumbnails/' + imgSrc});
+                    
+                  });
+                  $.fancybox.open(
+                    fancyPhotos,
+                    {
+                    helpers : {
+                      thumbs : {
+                        width: 64,
+                        height: 64,
+                        source: function (item) {
+                          return(item["thumbnail"]);
+                        }
+                      }
+                    }
+                  });
+                  //photoInfoWindow.setContent('<img style="max-width: 100%; max-height: 100%" src="' + imgSrc + '">');
+                  //photoInfoWindow.open(map, currentPhoto["marker"]);
                 });
               }
             }
@@ -524,7 +599,7 @@
       
       function initialize() {
         map = new google.maps.Map(document.getElementById('map_canvas'), UrlToMapOptions(location.href));
-        
+
         var gpsPath;
         var polyOptions = {
           path: new google.maps.MVCArray(),
@@ -541,6 +616,9 @@
           routePolyline.setOptions({strokeOpacity: 0.5});
         });
         routePolyline.setMap(map);
+        photoInfoWindow = new google.maps.InfoWindow({
+          content: ''
+        });
         $.getJSON("tile_info.json", function(data) {
           $.each(data, function(key, val) {
             if(key == "tiles") {
@@ -735,6 +813,5 @@
   </head>
   <body>
     <div id="map_canvas"></div>
-    <!--<span class="ui-icon ui-icon-calculator"></span>-->
   </body>
 </html>
