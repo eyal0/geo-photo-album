@@ -131,8 +131,9 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
     <Compile Include="PointD.vb" />
-    <Compile Include="SHA1.vb" />
+    <Compile Include="CryptoHelpers.vb" />
     <Compile Include="SHGetFileInfo.vb" />
+    <Compile Include="Shootout.vb" />
     <Compile Include="Video.vb" />
     <Compile Include="WinStructs.vb" />
   </ItemGroup>

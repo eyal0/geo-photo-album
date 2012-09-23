@@ -30,6 +30,11 @@ Public Class Json
         json_ = New List(Of Json)(jsons)
     End Sub
 
+    Sub New(jsons As IEnumerable(Of Json))
+        json_ = New List(Of Json)(jsons)
+    End Sub
+
+
     Sub MergeFile(f As String)
         Dim new_json As Json = FromFile(f)
         MergeJson(new_json)
@@ -116,8 +121,8 @@ Public Class Json
                                                                         Return s
                                                                     End Function,
                                                                         Function(s As String)
-                                                                        Return ""
-                                                                    End Function))
+                                                                            Return ""
+                                                                        End Function))
         Else
             Return DirectCast(json_, String)
         End If
@@ -500,16 +505,6 @@ Public Class Json
         If Not IsNothing Then ToObject.Clear()
     End Sub
 
-    Public Function Contains(item As String) As Boolean
-        If IsNothing Then Return False
-        If IsArray Then
-            Dim j As New Json
-            j.json_ = item
-            Return ToArray.Contains(j)
-        End If
-        Return False
-    End Function
-
     Public Function Contains(item As KeyValuePair(Of String, Json)) As Boolean Implements ICollection(Of KeyValuePair(Of String, Json)).Contains
         If IsNothing Then Return False Else Return ToObject.Contains(item)
     End Function
@@ -603,6 +598,12 @@ Public Class Json
     End Sub
 
     Public Sub Add(ParamArray items() As Json)
+        For Each Item As Json In items
+            Me.Add(Item)
+        Next
+    End Sub
+
+    Public Sub Add(items As IEnumerable(Of Json))
         For Each Item As Json In items
             Me.Add(Item)
         Next

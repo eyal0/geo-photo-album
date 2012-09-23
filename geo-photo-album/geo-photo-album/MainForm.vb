@@ -751,6 +751,21 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
         Public Function CompareTo(other As PhotoInfo) As Integer Implements IComparable(Of PhotoInfo).CompareTo
             Return DTO.CompareTo(other.DTO)
         End Function
+
+        Public Function ToJson(relative_path As String) As Json
+            Dim ret As New Json
+            ret.Add(New Json(relative_path))
+            ret.Add(New Json(Rank))
+            ret.Add(New Json(DTO.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffffzzz", Globalization.CultureInfo.InvariantCulture)))
+            ret.Add(New Json(LatLng.Value.LatitudeInDegrees))
+            ret.Add(New Json(LatLng.Value.LongitudeInDegrees))
+            If EncryptedImageKeys IsNot Nothing Then
+                ret.Add(New Json(EncryptedImageKeys.Select(Function(t As Tuple(Of Byte(), Byte()))
+                                                               Return New Json(New Json(CryptoHelpers.ByteArrayToString(t.Item1)), New Json(CryptoHelpers.ByteArrayToString(t.Item2)))
+                                                           End Function)))
+            End If
+            Return ret
+        End Function
     End Class
 
     Class PasswordInfo
@@ -767,10 +782,49 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
             Salt = pbkdf2.Salt
             Iterations = pbkdf2.IterationCount
         End Sub
+
+        Sub New(password As String, salt As Byte())
+            Me.Password = password
+            Const KEY_BYTE_COUNT As Integer = 16
+            Dim pbkdf2 As New System.Security.Cryptography.Rfc2898DeriveBytes(Me.Password, salt)
+            Key = pbkdf2.GetBytes(KEY_BYTE_COUNT)
+            Me.Salt = pbkdf2.Salt
+            Iterations = pbkdf2.IterationCount
+        End Sub
+
+        Shared Function FromJsons(password As String, password_jsons As Json) As PasswordInfo
+            For Each password_json As Json In password_jsons
+                Dim salt As Byte() = CryptoHelpers.StringToByteArray(password_json(0).ToString)
+                Dim current_pinfo As New PasswordInfo(password, salt)
+                current_pinfo.RandomBytesEncrypted = CryptoHelpers.StringToByteArray(password_json(1).ToString)
+                current_pinfo.RandomBytesPlus1Encrypted = CryptoHelpers.StringToByteArray(password_json(2).ToString)
+                Dim RandomBytes As Byte() = AES_ECB_Decrypt(current_pinfo.Key, current_pinfo.RandomBytesEncrypted)
+                Dim RandomBytesPlus1 As Byte() = AES_ECB_Decrypt(current_pinfo.Key, current_pinfo.RandomBytesPlus1Encrypted)
+                RandomBytesPlus1(0) = CType((RandomBytesPlus1(0) + 255) Mod 256, Byte)
+                If CryptoHelpers.ByteArrayToString(RandomBytes) = CryptoHelpers.ByteArrayToString(RandomBytesPlus1) Then
+                    Return current_pinfo
+                End If
+            Next
+            Return Nothing
+        End Function
+
+        Function ToJson() As Json
+            If RandomBytesEncrypted Is Nothing OrElse RandomBytesPlus1Encrypted Is Nothing Then
+                Dim RandomBytes As Byte() = New Byte(0 To 15) {}
+                Security.Cryptography.RandomNumberGenerator.Create.GetBytes(RandomBytes)
+                RandomBytesEncrypted = AES_ECB_Encrypt(Key, RandomBytes)
+                RandomBytesPlus1Encrypted = AES_ECB_Encrypt(Key, RandomBytes)
+            End If
+            Dim ret As New Json
+            ret.Add(New Json(CryptoHelpers.ByteArrayToString(Salt)), New Json(CryptoHelpers.ByteArrayToString(RandomBytesEncrypted)), New Json(CryptoHelpers.ByteArrayToString(RandomBytesPlus1Encrypted)))
+            Return ret
+        End Function
         Property Password As String
         Property Iterations As Integer
         Property Salt As Byte()
         Property Key As Byte()
+        Property RandomBytesEncrypted As Byte()
+        Property RandomBytesPlus1Encrypted As Byte()
     End Class
 
     Public Shared Sub ResizeJpeg(ByVal filePathSource As String, filePathDestination As String, ByVal maxWidth As Integer, ByVal maxHeight As Integer, orientation As Integer)
@@ -941,6 +995,7 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
                 Next
             End If
             Dim passwords As New Dictionary(Of String, PasswordInfo)
+            Dim AuxPasswords As New List(Of String)
             If IO.Directory.Exists(txtOutputDest.Text) Then
                 For Each current_photo As PhotoInfo In all_photos
                     current_photo.Rank = current_rank
@@ -958,6 +1013,7 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
                         IO.Directory.CreateDirectory(IO.Path.GetDirectoryName(thumbnail_dest_file))
                     End If
                     Dim dest_file As String = IO.Path.Combine(destination, "photos", relative_path)
+                    relative_path = relative_path.Replace(IO.Path.DirectorySeparatorChar, "/")
                     If Not IO.Directory.Exists(IO.Path.GetDirectoryName(dest_file)) Then
                         IO.Directory.CreateDirectory(IO.Path.GetDirectoryName(dest_file))
                     End If
@@ -971,18 +1027,38 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
                                            Not IO.File.Exists(thumbnail_dest_file) OrElse
                                            IO.File.GetLastWriteTime(thumbnail_dest_file) < IO.File.GetLastWriteTime(current_photo.Filename))
                     Else
+                        For Each current_password As String In current_photo.Passwords
+                            If Not passwords.ContainsKey(current_password) Then
+                                Dim possible_pinfo As PasswordInfo = PasswordInfo.FromJsons(current_password, photo_info("passwords"))
+                                If possible_pinfo IsNot Nothing Then
+                                    passwords.Add(current_password, possible_pinfo)
+                                Else
+                                    passwords.Add(current_password, New PasswordInfo(current_password))
+                                End If
+                            End If
+                        Next
+                        'can we figure out the current ImageKey?
+                        Dim salts As New List(Of Byte())
+                        If photo_info.ContainsKey("passwords") Then
+                            For Each json_password As Json In photo_info("passwords")
+                                salts.Add(StringToByteArray(json_password(0).ToString))
+                            Next
+                        End If
+                        current_photo.ImageKey = GetImageKey(photo_dict(relative_path), passwords, AuxPasswords, salts)
                         write_dest = (ForceOverwrite OrElse
                                       Not IO.File.Exists(dest_file + ".aes") OrElse
-                                      IO.File.GetLastWriteTime(dest_file + ".aes") < IO.File.GetLastWriteTime(current_photo.Filename))
+                                      IO.File.GetLastWriteTime(dest_file + ".aes") < IO.File.GetLastWriteTime(current_photo.Filename) OrElse
+                                      current_photo.ImageKey Is Nothing)
                         write_thumbnail = (ForceOverwrite OrElse
                                            Not IO.File.Exists(thumbnail_dest_file + ".aes") OrElse
-                                           IO.File.GetLastWriteTime(thumbnail_dest_file + ".aes") < IO.File.GetLastWriteTime(current_photo.Filename))
+                                           IO.File.GetLastWriteTime(thumbnail_dest_file + ".aes") < IO.File.GetLastWriteTime(current_photo.Filename) OrElse
+                                           current_photo.ImageKey Is Nothing)
                         If write_dest Or write_thumbnail Then 'if we must update encrypted files, we much update both
                             write_dest = True
                             write_thumbnail = True
                         End If
-                    End If
-                    If write_dest Then
+                        End If
+                        If write_dest Then
                         If (relative_path.EndsWith(".jpg", StringComparison.CurrentCultureIgnoreCase) OrElse
                             relative_path.EndsWith(".jpeg", StringComparison.CurrentCultureIgnoreCase)) Then
                             ResizeJpeg(current_photo.Filename, dest_file, 1600, 1600, current_photo.Orientation)
@@ -1006,22 +1082,22 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
                         End If
                     End If
                     'encrypt if needed
-                    If write_dest AndAlso current_photo.Passwords IsNot Nothing Then 'in this case, both write_dest and write_thumbnail will be the same
-                        'encrypt the file with a random key
-                        current_photo.ImageKey = AES_Encrypt_File(dest_file, dest_file + ".aes")
-                        IO.File.Delete(dest_file) 'delete unencrypted dest
-                        AES_Encrypt_File(thumbnail_dest_file, thumbnail_dest_file + ".aes", current_photo.ImageKey)
-                        IO.File.Delete(thumbnail_dest_file) 'delete unencrypted thumbnail
+                    If current_photo.Passwords IsNot Nothing Then
+                        If write_dest Then 'in this case, both write_dest and write_thumbnail will be the same
+                            'encrypt the file with a random key
+
+                            current_photo.ImageKey = AES_Encrypt_File(dest_file, dest_file + ".aes")
+                            IO.File.Delete(dest_file) 'delete unencrypted dest
+                            AES_Encrypt_File(thumbnail_dest_file, thumbnail_dest_file + ".aes", current_photo.ImageKey)
+                            IO.File.Delete(thumbnail_dest_file) 'delete unencrypted thumbnail
+                        End If
                         'encrypt the ImageKey with each password
                         current_photo.EncryptedImageKeys = New List(Of Tuple(Of Byte(), Byte()))
                         For Each current_password As String In current_photo.Passwords
-                            If Not passwords.ContainsKey(current_password) Then
-                                passwords.Add(current_password, New PasswordInfo(current_password))
-                            End If
                             Dim ImageKeyEncrypted As Byte() = AES_ECB_Encrypt(passwords(current_password).Key, current_photo.ImageKey)
                             current_photo.ImageKey(0) = CType((current_photo.ImageKey(0) + 1) Mod 256, Byte)
                             Dim ImageKeyPlus1Encrypted As Byte() = AES_ECB_Encrypt(passwords(current_password).Key, current_photo.ImageKey)
-                            current_photo.ImageKey(0) = CType((current_photo.ImageKey(0) - 1) Mod 256, Byte) 'put it back
+                            current_photo.ImageKey(0) = CType((current_photo.ImageKey(0) + 255) Mod 256, Byte) 'put it back
                             current_photo.EncryptedImageKeys.Add(New Tuple(Of Byte(), Byte())(ImageKeyEncrypted, ImageKeyPlus1Encrypted))
                         Next
                     End If
@@ -1031,105 +1107,119 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
                     If Not photo_info.ContainsKey("photos") Then
                         photo_info.Add("photos", New Json)
                     End If
-                    Dim new_photo_info As Json = PhotoInfoToJson(current_photo, relative_path)
+                    Dim new_photo_info As Json = current_photo.ToJson(relative_path)
                     If Not photo_dict.ContainsKey(new_photo_info(0).ToString) Then
                         photo_dict.Add(new_photo_info(0).ToString, new_photo_info)
-                    ElseIf write_dest Or write_thumbnail Then
+                    Else
                         'completely replace the old one with the new one, including passwords
                         photo_dict(new_photo_info(0).ToString) = new_photo_info
-                    Else
-                        'overwrite things, passwords untouched
-                        For i As Integer = 0 To new_photo_info.Count - 1
-                            photo_dict(new_photo_info(0).ToString)(i) = new_photo_info(i)
-                        Next
                     End If
                 Next
                 'convert dict back to photo_info
                 photo_info("photos") = New Json(photo_dict.Values.ToArray)
-                If passwords IsNot Nothing AndAlso passwords.Count > 0 Then
-                    For Each p As PasswordInfo In passwords.Values
-                        Dim new_password_info As Json = PasswordInfoToJson(p)
-                        For i As Integer = photo_info("passwords").Count - 1 To 0 Step -1
-                            If photo_info("passwords")(i) = new_password_info Then
-                                photo_info("passwords").RemoveAt(i)
-                            End If
-                        Next
-                        photo_info("passwords").Add(new_password_info)
+                photo_info.Remove("passwords")
+                If passwords.Count > 0 Then
+                    photo_info.Add("passwords", New Json)
+                    For Each pinfo As PasswordInfo In passwords.Values
+                        photo_info("passwords").Add(pinfo.ToJson())
                     Next
                 End If
-                IO.File.WriteAllLines(IO.Path.Combine(destination, "photo_info.json"), photo_info.ToJson("", "  "))
             End If
+            IO.File.WriteAllLines(IO.Path.Combine(destination, "photo_info.json"), photo_info.ToJson("", "  "))
         End If
     End Sub
 
-    Function PasswordInfoToJson(p As PasswordInfo) As Json
-        Dim RandomBytes(0 To 15) As Byte
-        Security.Cryptography.RandomNumberGenerator.Create.GetBytes(RandomBytes)
-        Dim RandomBytesEncrypted As Byte() = AES_ECB_Encrypt(p.Key, RandomBytes)
-        RandomBytes(0) = CType((RandomBytes(0) + 1) Mod 256, Byte)
-        Dim RandomBytesPlus1Encrypted As Byte() = AES_ECB_Encrypt(p.Key, RandomBytes)
-        RandomBytes(0) = CType((RandomBytes(0) - 1) Mod 256, Byte)
-        Dim ret As New Json
-        ret.Add(New Json(BytesToHexString(p.Salt)), New Json(BytesToHexString(RandomBytesEncrypted)), New Json(BytesToHexString(RandomBytesPlus1Encrypted)))
-        Return ret
-    End Function
-
-    'returns the key that was used for encryption
-    Function AES_Encrypt_File(SourceFilename As String, DestinationFilename As String, Optional ImageKey As Byte() = Nothing) As Byte()
-        Dim AES As New System.Security.Cryptography.AesManaged
-        AES.Mode = Security.Cryptography.CipherMode.CBC
-        If ImageKey IsNot Nothing Then
-            AES.Key = ImageKey
-        Else
-            AES.KeySize = 128 'will generate a random key
+    Function GetImageKey(photo_info As Json, passwords As Dictionary(Of String, PasswordInfo), AuxPasswords As List(Of String), salts As List(Of Byte())) As Byte()
+        If photo_info.Count < 6 Then
+            Return Nothing
         End If
-        Dim Encryptor As Security.Cryptography.ICryptoTransform = AES.CreateEncryptor
-        Dim plain_bytes As Byte() = System.IO.File.ReadAllBytes(SourceFilename)
-        Dim cipher_bytes As Byte() = Encryptor.TransformFinalBlock(plain_bytes, 0, plain_bytes.Length)
-        Dim output_bytes(0 To cipher_bytes.Length + AES.IV.Length - 1) As Byte
-        Buffer.BlockCopy(AES.IV, 0, output_bytes, 0, AES.IV.Length)
-        Buffer.BlockCopy(cipher_bytes, 0, output_bytes, AES.IV.Length, cipher_bytes.Length)
-        IO.File.WriteAllBytes(DestinationFilename, output_bytes)
-        Return AES.Key
-    End Function
-
-    Function AES_ECB_Encrypt(Key As Byte(), Input As Byte(), Optional start As Integer = 0, Optional length As Integer = -1) As Byte()
-        If length = -1 Then
-            length = Input.Length
-        End If
-        Dim AES As New System.Security.Cryptography.AesManaged
-        AES.Key = Key
-        AES.Mode = Security.Cryptography.CipherMode.ECB
-        AES.Padding = Security.Cryptography.PaddingMode.None
-        Dim Encryptor As Security.Cryptography.ICryptoTransform = AES.CreateEncryptor()
-        Dim Output As Byte() = Encryptor.TransformFinalBlock(Input, start, length)
-        Dim IVandOutput(0 To Output.Length + AES.IV.Length - 1) As Byte
-        Buffer.BlockCopy(AES.IV, 0, IVandOutput, 0, AES.IV.Length)
-        Buffer.BlockCopy(Output, 0, IVandOutput, AES.IV.Length, Output.Length)
-        Return IVandOutput
-    End Function
-
-    Private Function BytesToHexString(input() As Byte) As String
-        Dim ret As String = ""
-        For i As Integer = 0 To input.Length - 1
-            ret += input(i).ToString("x2")
+        For Each current_pinfo As PasswordInfo In passwords.Values
+            For Each ImageKeyPair As Json In photo_info(5)
+                Dim ImageKeyEncrypted As Byte() = CryptoHelpers.StringToByteArray(ImageKeyPair(0).ToString)
+                Dim ImageKeyPlus1Encrypted As Byte() = CryptoHelpers.StringToByteArray(ImageKeyPair(1).ToString)
+                Dim ImageKey As Byte() = AES_ECB_Decrypt(current_pinfo.Key, ImageKeyEncrypted)
+                Dim ImageKeyPlus1 As Byte() = AES_ECB_Decrypt(current_pinfo.Key, ImageKeyPlus1Encrypted)
+                ImageKeyPlus1(0) = CType((ImageKeyPlus1(0) + 255) Mod 256, Byte)
+                If CryptoHelpers.ByteArrayToString(ImageKey) = CryptoHelpers.ByteArrayToString(ImageKeyPlus1) Then
+                    Return ImageKey
+                End If
+            Next
         Next
-        Return ret
+        For Each PossiblePassword As String In AuxPasswords
+            For Each salt As Byte() In salts
+                Dim current_pinfo As PasswordInfo = New PasswordInfo(PossiblePassword, salt)
+                For Each ImageKeyPair As Json In photo_info(5)
+                    Dim ImageKeyEncrypted As Byte() = CryptoHelpers.StringToByteArray(ImageKeyPair(0).ToString)
+                    Dim ImageKeyPlus1Encrypted As Byte() = CryptoHelpers.StringToByteArray(ImageKeyPair(1).ToString)
+                    Dim ImageKey As Byte() = AES_ECB_Decrypt(current_pinfo.Key, ImageKeyEncrypted)
+                    Dim ImageKeyPlus1 As Byte() = AES_ECB_Decrypt(current_pinfo.Key, ImageKeyPlus1Encrypted)
+                    ImageKeyPlus1(0) = CType((ImageKeyPlus1(0) + 255) Mod 256, Byte)
+                    If CryptoHelpers.ByteArrayToString(ImageKey) = CryptoHelpers.ByteArrayToString(ImageKeyPlus1) Then
+                        Return ImageKey
+                    End If
+                Next
+            Next
+        Next
+        Do
+            Dim PossiblePassword As String = Interaction.InputBox("Input possible password")
+            If PossiblePassword <> "" Then
+                For Each salt As Byte() In salts
+                    Dim current_pinfo As PasswordInfo = New PasswordInfo(PossiblePassword, salt)
+                    If Not AuxPasswords.Contains(PossiblePassword) Then
+                        AuxPasswords.Add(PossiblePassword)
+                    End If
+                    For Each ImageKeyPair As Json In photo_info(5)
+                        Dim ImageKeyEncrypted As Byte() = CryptoHelpers.StringToByteArray(ImageKeyPair(0).ToString)
+                        Dim ImageKeyPlus1Encrypted As Byte() = CryptoHelpers.StringToByteArray(ImageKeyPair(1).ToString)
+                        Dim ImageKey As Byte() = AES_ECB_Decrypt(current_pinfo.Key, ImageKeyEncrypted)
+                        Dim ImageKeyPlus1 As Byte() = AES_ECB_Decrypt(current_pinfo.Key, ImageKeyPlus1Encrypted)
+                        ImageKeyPlus1(0) = CType((ImageKeyPlus1(0) + 255) Mod 256, Byte)
+                        If CryptoHelpers.ByteArrayToString(ImageKey) = CryptoHelpers.ByteArrayToString(ImageKeyPlus1) Then
+                            Return ImageKey
+                        End If
+                    Next
+                Next
+            Else
+                Exit Do
+            End If
+        Loop
+        Return Nothing
     End Function
 
-    Function PhotoInfoToJson(photoinfo As PhotoInfo, relative_path As String) As Json
-        Dim ret As New Json
-        ret.Add(New Json(relative_path))
-        ret.Add(New Json(photoinfo.Rank))
-        ret.Add(New Json(photoinfo.DTO.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffffzzz", Globalization.CultureInfo.InvariantCulture)))
-        ret.Add(New Json(photoinfo.LatLng.Value.LatitudeInDegrees))
-        ret.Add(New Json(photoinfo.LatLng.Value.LongitudeInDegrees))
-        If photoinfo.EncryptedImageKeys IsNot Nothing Then
-            ret.Add(photoinfo.EncryptedImageKeys.Select(Function(t As Tuple(Of Byte(), Byte()))
-                                                            Return New Json(New Json(BytesToHexString(t.Item1)), New Json(BytesToHexString(t.Item2)))
-                                                        End Function).ToArray)
+    Function PasswordsMatch(password_jsons As Json, photo_info As Json, passwords As List(Of String)) As Boolean
+        If photo_info.Count < 6 OrElse passwords.Count <> photo_info(5).Count Then
+            Return False
         End If
-        Return ret
+        Dim success_count(0 To passwords.Count - 1) As Byte
+        For i As Integer = 0 To success_count.Length - 1
+            success_count(i) = 0
+        Next
+        For password_index As Integer = 0 To passwords.Count - 1
+            Dim password As String = passwords(password_index)
+            For Each password_json As Json In password_jsons
+                Dim salt As Byte() = CryptoHelpers.StringToByteArray(password_json(0).ToString)
+                Dim RandomBytesEncrypted As Byte() = CryptoHelpers.StringToByteArray(password_json(1).ToString)
+                Dim RandomBytesPlus1Encrypted As Byte() = CryptoHelpers.StringToByteArray(password_json(2).ToString)
+                Dim current_pinfo As New PasswordInfo(password, salt)
+                Dim RandomBytes As Byte() = AES_ECB_Decrypt(current_pinfo.Key, RandomBytesEncrypted)
+                Dim RandomBytesPlus1 As Byte() = AES_ECB_Decrypt(current_pinfo.Key, RandomBytesPlus1Encrypted)
+                RandomBytes(0) = CType((RandomBytes(0) + 1) Mod 256, Byte)
+                If CryptoHelpers.ByteArrayToString(RandomBytes) = CryptoHelpers.ByteArrayToString(RandomBytesPlus1) Then
+                    'This password is valid for something!
+                    Dim ImageKeyPair As Json = photo_info(5)(password_index)
+                    Dim ImageKeyEncrypted As Byte() = CryptoHelpers.StringToByteArray(ImageKeyPair(0).ToString)
+                    Dim ImageKeyPlus1Encrypted As Byte() = CryptoHelpers.StringToByteArray(ImageKeyPair(1).ToString)
+                    Dim ImageKey As Byte() = AES_ECB_Decrypt(current_pinfo.Key, ImageKeyEncrypted)
+                    Dim ImageKeyPlus1 As Byte() = AES_ECB_Decrypt(current_pinfo.Key, ImageKeyPlus1Encrypted)
+                    ImageKey(0) = CType((ImageKey(0) + 1) Mod 256, Byte)
+                    If CryptoHelpers.ByteArrayToString(ImageKey) <> CryptoHelpers.ByteArrayToString(ImageKeyPlus1) Then
+                        'this password fails for this key
+                        Return False
+                    End If
+                End If
+            Next
+        Next
+        Return True
     End Function
 
     Private Sub btnOutputSrcFile_Click(sender As Object, e As EventArgs) Handles btnOutputSrcFile.Click
@@ -1137,4 +1227,22 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
     End Sub
 #End Region
 
+    Private Sub Button1_Click(sender As Object, e As EventArgs) Handles Button1.Click
+        Dim s As New Shootout(Of Integer)
+
+        For i As Integer = 0 To 9
+            s.Add(i)
+        Next
+        s.SetLessThanOrEqual(0, 1)
+        s.SetLessThanOrEqual(1, 2)
+        s.SetLessThanOrEqual(3, 4)
+        s.SetLessThanOrEqual(4, 5)
+        s.SetLessThanOrEqual(0, 3)
+        s.SetLessThanOrEqual(1, 4)
+        s.SetLessThanOrEqual(2, 5)
+
+        s.SetLessThanOrEqual(5, 0)
+        s.Trim()
+        MsgBox(s.Compare(0, 2))
+    End Sub
 End Class

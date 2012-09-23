@@ -57,6 +57,9 @@ Partial Class MainForm
         Me.btnDetailView = New System.Windows.Forms.Button()
         Me.btnFilterTags = New System.Windows.Forms.Button()
         Me.txtTagFilter = New System.Windows.Forms.TextBox()
+        Me.lvFileTags = New GeoPhotoAlbums.FileView()
+        Me.ColumnHeader1 = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
+        Me.ColumnHeader2 = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
         Me.LargeImageList = New System.Windows.Forms.ImageList(Me.components)
         Me.SmallImageList = New System.Windows.Forms.ImageList(Me.components)
         Me.SplitContainer5 = New System.Windows.Forms.SplitContainer()
@@ -75,9 +78,8 @@ Partial Class MainForm
         Me.btnOutputSrcFile = New System.Windows.Forms.Button()
         Me.lblOutputSrc = New System.Windows.Forms.Label()
         Me.txtOutputSrc = New System.Windows.Forms.TextBox()
-        Me.lvFileTags = New GeoPhotoAlbums.FileView()
-        Me.ColumnHeader1 = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
-        Me.ColumnHeader2 = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
+        Me.TabShootout = New System.Windows.Forms.TabPage()
+        Me.Button1 = New System.Windows.Forms.Button()
         Me.MainTab.SuspendLayout()
         Me.TabSortCsv.SuspendLayout()
         Me.TabFilterCsv.SuspendLayout()
@@ -101,6 +103,7 @@ Partial Class MainForm
         CType(Me.picPreview, System.ComponentModel.ISupportInitialize).BeginInit()
         CType(Me.wmpPreview, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.TabOutputFiles.SuspendLayout()
+        Me.TabShootout.SuspendLayout()
         Me.SuspendLayout()
         '
         'MainTab
@@ -109,6 +112,7 @@ Partial Class MainForm
         Me.MainTab.Controls.Add(Me.TabFilterCsv)
         Me.MainTab.Controls.Add(Me.TabTagFiles)
         Me.MainTab.Controls.Add(Me.TabOutputFiles)
+        Me.MainTab.Controls.Add(Me.TabShootout)
         Me.MainTab.Dock = System.Windows.Forms.DockStyle.Fill
         Me.MainTab.Location = New System.Drawing.Point(0, 0)
         Me.MainTab.Name = "MainTab"
@@ -480,6 +484,33 @@ Partial Class MainForm
         Me.txtTagFilter.TabIndex = 0
         Me.txtTagFilter.Text = "C:\Users\Eyal\Pictures\World Tour 2011-2012\Thailand\Bangkok"
         '
+        'lvFileTags
+        '
+        Me.lvFileTags.Columns.AddRange(New System.Windows.Forms.ColumnHeader() {Me.ColumnHeader1, Me.ColumnHeader2})
+        Me.lvFileTags.Dock = System.Windows.Forms.DockStyle.Fill
+        Me.lvFileTags.FullRowSelect = True
+        Me.lvFileTags.GridLines = True
+        Me.lvFileTags.LargeImageList = Me.LargeImageList
+        Me.lvFileTags.Location = New System.Drawing.Point(0, 0)
+        Me.lvFileTags.my_json = Nothing
+        Me.lvFileTags.Name = "lvFileTags"
+        Me.lvFileTags.ShowGroups = False
+        Me.lvFileTags.Size = New System.Drawing.Size(649, 523)
+        Me.lvFileTags.SmallImageList = Me.SmallImageList
+        Me.lvFileTags.TabIndex = 0
+        Me.lvFileTags.UseCompatibleStateImageBehavior = False
+        Me.lvFileTags.View = System.Windows.Forms.View.Details
+        '
+        'ColumnHeader1
+        '
+        Me.ColumnHeader1.Text = "File"
+        Me.ColumnHeader1.Width = 100
+        '
+        'ColumnHeader2
+        '
+        Me.ColumnHeader2.Text = "Tags"
+        Me.ColumnHeader2.Width = 300
+        '
         'LargeImageList
         '
         Me.LargeImageList.ColorDepth = System.Windows.Forms.ColorDepth.Depth32Bit
@@ -674,32 +705,25 @@ Partial Class MainForm
         Me.txtOutputSrc.TabIndex = 15
         Me.txtOutputSrc.Text = "C:\Users\Eyal\Pictures\World Tour 2011-2012\WorldTourGPA.json"
         '
-        'lvFileTags
+        'TabShootout
         '
-        Me.lvFileTags.Columns.AddRange(New System.Windows.Forms.ColumnHeader() {Me.ColumnHeader1, Me.ColumnHeader2})
-        Me.lvFileTags.Dock = System.Windows.Forms.DockStyle.Fill
-        Me.lvFileTags.FullRowSelect = True
-        Me.lvFileTags.GridLines = True
-        Me.lvFileTags.LargeImageList = Me.LargeImageList
-        Me.lvFileTags.Location = New System.Drawing.Point(0, 0)
-        Me.lvFileTags.my_json = Nothing
-        Me.lvFileTags.Name = "lvFileTags"
-        Me.lvFileTags.ShowGroups = False
-        Me.lvFileTags.Size = New System.Drawing.Size(649, 523)
-        Me.lvFileTags.SmallImageList = Me.SmallImageList
-        Me.lvFileTags.TabIndex = 0
-        Me.lvFileTags.UseCompatibleStateImageBehavior = False
-        Me.lvFileTags.View = System.Windows.Forms.View.Details
+        Me.TabShootout.Controls.Add(Me.Button1)
+        Me.TabShootout.Location = New System.Drawing.Point(4, 22)
+        Me.TabShootout.Name = "TabShootout"
+        Me.TabShootout.Padding = New System.Windows.Forms.Padding(3)
+        Me.TabShootout.Size = New System.Drawing.Size(1145, 628)
+        Me.TabShootout.TabIndex = 4
+        Me.TabShootout.Text = "Shootout"
+        Me.TabShootout.UseVisualStyleBackColor = True
         '
-        'ColumnHeader1
+        'Button1
         '
-        Me.ColumnHeader1.Text = "File"
-        Me.ColumnHeader1.Width = 100
-        '
-        'ColumnHeader2
-        '
-        Me.ColumnHeader2.Text = "Tags"
-        Me.ColumnHeader2.Width = 300
+        Me.Button1.Location = New System.Drawing.Point(528, 109)
+        Me.Button1.Name = "Button1"
+        Me.Button1.Size = New System.Drawing.Size(93, 44)
+        Me.Button1.TabIndex = 0
+        Me.Button1.Text = "Button1"
+        Me.Button1.UseVisualStyleBackColor = True
         '
         'MainForm
         '
@@ -738,6 +762,7 @@ Partial Class MainForm
         CType(Me.wmpPreview, System.ComponentModel.ISupportInitialize).EndInit()
         Me.TabOutputFiles.ResumeLayout(False)
         Me.TabOutputFiles.PerformLayout()
+        Me.TabShootout.ResumeLayout(False)
         Me.ResumeLayout(False)
 
     End Sub
@@ -795,5 +820,7 @@ Partial Class MainForm
     Friend WithEvents btnOutputSrcFile As System.Windows.Forms.Button
     Friend WithEvents lblOutputSrc As System.Windows.Forms.Label
     Friend WithEvents txtOutputSrc As System.Windows.Forms.TextBox
+    Friend WithEvents TabShootout As System.Windows.Forms.TabPage
+    Friend WithEvents Button1 As System.Windows.Forms.Button
 
 End Class
