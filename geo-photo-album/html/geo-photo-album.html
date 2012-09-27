@@ -262,7 +262,10 @@
         if(animation_id=="fadeOut") {
           $('div[style*="z-index: ' + (1000 + currentPhoto[1]) + ';"] img').removeClass("fadeIn").removeClass("fadePartial").addClass("fadeOut");
           currentPhoto["marker"].setTitle("");
-          currentPhoto["marker"].setClickable(false);
+          if(currentPhoto["marker"].getClickable()) {
+            currentPhoto["marker"].setClickable(false);
+          }
+          //currentPhoto["marker"].setShape(currentPhoto["shape"]);
           if($('div[style*="z-index: ' + (1000 + currentPhoto[1]) + ';"] img').css("opacity") === 0) {
             currentPhoto["marker"].setMap(null);
             currentPhoto["marker"]=null;
@@ -270,11 +273,17 @@
         } else if(animation_id=="fadeIn") {
           $('div[style*="z-index: ' + (1000 + currentPhoto[1]) + ';"] img').removeClass("fadeOut").removeClass("fadePartial").addClass("fadeIn");
           currentPhoto["marker"].setTitle(currentPhoto[0]);
-          currentPhoto["marker"].setClickable(true);
+          if(!currentPhoto["marker"].getClickable()) {
+            currentPhoto["marker"].setClickable(true);
+          }
+          //currentPhoto["marker"].setShape(currentPhoto["shape"]);
         } else if(animation_id=="fadePartial") {
           $('div[style*="z-index: ' + (1000 + currentPhoto[1]) + ';"] img').removeClass("fadeOut").removeClass("fadeIn").addClass("fadePartial");
           currentPhoto["marker"].setTitle(currentPhoto[0]);
-          currentPhoto["marker"].setClickable(true);
+          if(!currentPhoto["marker"].getClickable()) {
+            currentPhoto["marker"].setClickable(true);
+          }
+          //currentPhoto["marker"].setShape(currentPhoto["shape"]);
         }
       }
       
