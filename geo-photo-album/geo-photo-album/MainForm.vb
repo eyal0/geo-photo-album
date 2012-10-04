@@ -813,7 +813,9 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
                 Dim RandomBytes As Byte() = New Byte(0 To 15) {}
                 Security.Cryptography.RandomNumberGenerator.Create.GetBytes(RandomBytes)
                 RandomBytesEncrypted = AES_ECB_Encrypt(Key, RandomBytes)
+                RandomBytes(0) = CType((RandomBytes(0) + 1) Mod 256, Byte)
                 RandomBytesPlus1Encrypted = AES_ECB_Encrypt(Key, RandomBytes)
+                RandomBytes(0) = CType((RandomBytes(0) + 255) Mod 256, Byte)
             End If
             Dim ret As New Json
             ret.Add(New Json(CryptoHelpers.ByteArrayToString(Salt)), New Json(CryptoHelpers.ByteArrayToString(RandomBytesEncrypted)), New Json(CryptoHelpers.ByteArrayToString(RandomBytesPlus1Encrypted)))
@@ -1226,23 +1228,22 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
         SourceFile_Click(sender, e, txtOutputSrc)
     End Sub
 #End Region
-
+#Region "Shootout"
     Private Sub Button1_Click(sender As Object, e As EventArgs) Handles Button1.Click
         Dim s As New Shootout(Of Integer)
 
-        For i As Integer = 0 To 9
-            s.Add(i)
-        Next
-        s.SetLessThanOrEqual(0, 1)
-        s.SetLessThanOrEqual(1, 2)
-        s.SetLessThanOrEqual(3, 4)
-        s.SetLessThanOrEqual(4, 5)
-        s.SetLessThanOrEqual(0, 3)
-        s.SetLessThanOrEqual(1, 4)
-        s.SetLessThanOrEqual(2, 5)
+        s.SetLesser(0, 1)
+        s.SetLesser(1, 2)
+        s.SetLesser(3, 4)
+        s.SetLesser(4, 5)
+        s.SetLesser(0, 3)
+        s.SetLesser(1, 4)
+        s.SetLesser(2, 5)
+        s.SetLesser(2, 3)
 
-        s.SetLessThanOrEqual(5, 0)
+        's.SetLessThanOrEqual(5, 0)
         s.Trim()
         MsgBox(s.Compare(0, 2))
     End Sub
+#End Region
 End Class
