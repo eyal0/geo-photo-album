@@ -93,6 +93,16 @@
         -o-transition: opacity 1s;
       }
       
+      .fancybox-tmp video {
+        max-width: none;
+        max-height: none;
+      }
+
+      video {
+        max-width: 100%;
+        max-height: 100%;
+      }
+
     </style>
     <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.21/themes/start/jquery-ui.css">
     <script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?sensor=false"></script>
@@ -406,92 +416,110 @@
                   map: map
                 });
                 google.maps.event.addListener(currentPhoto["marker"], 'mouseover', function () {
-                  markerAnimation("fadeIn", currentPhoto);
+                  if(currentPhoto["displayed"]) {
+                      markerAnimation("fadeIn", currentPhoto);
+                  }
                 });
                 google.maps.event.addListener(currentPhoto["marker"], 'mouseout', function () {
-                  markerAnimation("fadePartial", currentPhoto);
+                  if(currentPhoto["displayed"]) {
+                    markerAnimation("fadePartial", currentPhoto);
+                  }
                 });
                 google.maps.event.addListener(currentPhoto["marker"], 'click', function () {
-                  var fancyPhotos = [];
-                  $.each([currentPhoto].concat(currentPhoto["hides"]), function(index, hiddenPhoto) {
-                    var imgSrc;
-                    var thumbSrc;
-                    if(hiddenPhoto["imageKey"]) { //must decrypt this image, we have imageKey to do it
-                      thumbSrc = function() {
-                        var xhr = new XMLHttpRequest();
-                        xhr.overrideMimeType('image/gif; charset=x-user-defined');
-                        if(!(/\.(jpg|jpeg)$/i.test(hiddenPhoto[0]))) {
-                          xhr.open("GET", "thumbnails/" + hiddenPhoto[0].replace(/\.[^.]*$/, ".jpg") + ".aes", false);
-                        } else {
-                          xhr.open("GET", "thumbnails/" + hiddenPhoto[0] + ".aes", false);
+                  if(currentPhoto["displayed"]) {
+                    var fancyPhotos = [];
+                    $.each([currentPhoto].concat(currentPhoto["hides"]), function(index, hiddenPhoto) {
+                      var imgSrc;
+                      var thumbSrc;
+                      if(hiddenPhoto["imageKey"]) { //must decrypt this image, we have imageKey to do it
+                        thumbSrc = function() {
+                          var xhr = new XMLHttpRequest();
+                          xhr.overrideMimeType('image/gif; charset=x-user-defined');
+                          if(!(/\.(jpg|jpeg)$/i.test(hiddenPhoto[0]))) {
+                            xhr.open("GET", "thumbnails/" + hiddenPhoto[0].replace(/\.[^.]*$/, ".jpg") + ".aes", false);
+                          } else {
+                            xhr.open("GET", "thumbnails/" + hiddenPhoto[0] + ".aes", false);
+                          }
+                          xhr.send();
+                          if(xhr.readyState == 4) {
+                            var key = CryptoJS.enc.Hex.parse(hiddenPhoto["imageKey"]);
+                            var iv = CryptoJS.enc.Latin1.parse(xhr.response.substr(0,16));
+                            var cipher = CryptoJS.enc.Latin1.parse(xhr.response.substr(16));
+                            var aesEncryptor = CryptoJS.algo.AES.createDecryptor(key, { iv: iv });
+                            var ciphertext0 = aesEncryptor.process(cipher);
+                            var ciphertext1 = aesEncryptor.finalize();
+                            return('data:image/png;base64,' + CryptoJS.enc.Base64.stringify(ciphertext0.concat(ciphertext1)));
+                          }
+                          return(null);
                         }
-                        xhr.send();
-                        if(xhr.readyState == 4) {
-                          var key = CryptoJS.enc.Hex.parse(hiddenPhoto["imageKey"]);
-                          var iv = CryptoJS.enc.Latin1.parse(xhr.response.substr(0,16));
-                          var cipher = CryptoJS.enc.Latin1.parse(xhr.response.substr(16));
-                          var aesEncryptor = CryptoJS.algo.AES.createDecryptor(key, { iv: iv });
-                          var ciphertext0 = aesEncryptor.process(cipher);
-                          var ciphertext1 = aesEncryptor.finalize();
-                          return('data:image/png;base64,' + CryptoJS.enc.Base64.stringify(ciphertext0.concat(ciphertext1)));
-                        }
-                        return(null);
-                      }
-                      imgSrc = function() {
-                        var xhr = new XMLHttpRequest();
-                        xhr.overrideMimeType('image/gif; charset=x-user-defined');
-                        if(!(/\.(jpg|jpeg)$/i.test(hiddenPhoto[0]))) {
-                          xhr.open("GET", "photos/" + hiddenPhoto[0].replace(/\.[^.]*$/, ".jpg") + ".aes", false);
-                        } else {
+                        imgSrc = function() {
+                          var xhr = new XMLHttpRequest();
+                          xhr.overrideMimeType('image/gif; charset=x-user-defined');
                           xhr.open("GET", "photos/" + hiddenPhoto[0] + ".aes", false);
+                          xhr.send();
+                          if(xhr.readyState == 4) {
+                            var key = CryptoJS.enc.Hex.parse(hiddenPhoto["imageKey"]);
+                            var iv = CryptoJS.enc.Latin1.parse(xhr.response.substr(0,16));
+                            var cipher = CryptoJS.enc.Latin1.parse(xhr.response.substr(16));
+                            var aesEncryptor = CryptoJS.algo.AES.createDecryptor(key, { iv: iv });
+                            var ciphertext0 = aesEncryptor.process(cipher);
+                            var ciphertext1 = aesEncryptor.finalize();
+                            return('data:image/png;base64,' + CryptoJS.enc.Base64.stringify(ciphertext0.concat(ciphertext1)));
+                          }
+                          return(null);
                         }
-                        xhr.send();
-                        if(xhr.readyState == 4) {
-                          var key = CryptoJS.enc.Hex.parse(hiddenPhoto["imageKey"]);
-                          var iv = CryptoJS.enc.Latin1.parse(xhr.response.substr(0,16));
-                          var cipher = CryptoJS.enc.Latin1.parse(xhr.response.substr(16));
-                          var aesEncryptor = CryptoJS.algo.AES.createDecryptor(key, { iv: iv });
-                          var ciphertext0 = aesEncryptor.process(cipher);
-                          var ciphertext1 = aesEncryptor.finalize();
-                          return('data:image/png;base64,' + CryptoJS.enc.Base64.stringify(ciphertext0.concat(ciphertext1)));
-                        }
-                        return(null);
-                      }
-                      fancyPhotos.push({href: imgSrc, title: hiddenPhoto[0] + " " + hiddenPhoto[2], thumbnail: thumbSrc, beforeLoad: function(obj1, obj2) {
-                        if($.isFunction(this.href)) {
-                          this.href = this.href();
-                        }
-                        if($.isFunction(this.thumbnail)) {
-                          this.thumbnail = this.thumbnail();
-                        }
-                        this.type = 'image';
-                      }});
-                    } else {
-                      if(!(/\.(jpg|jpeg)$/i.test(hiddenPhoto[0]))) {
-                        thumbSrc = "thumbnails/" + hiddenPhoto[0].replace(/\.[^.]*$/, ".jpg");
-                        imgSrc = "photos/" + hiddenPhoto[0].replace(/\.[^.]*$/, ".jpg");
+                        fancyPhotos.push({href: imgSrc, title: hiddenPhoto[0] + "<br />" + hiddenPhoto[2], thumbnail: thumbSrc});
                       } else {
-                        thumbSrc = "thumbnails/" + hiddenPhoto[0];
-                        imgSrc = "photos/" + hiddenPhoto[0];
-                      }
-                      fancyPhotos.push({href: imgSrc, title: hiddenPhoto[0] + " " + hiddenPhoto[2], thumbnail: thumbSrc});
-                    }
-                  });
-                  $.fancybox.open(
-                    fancyPhotos,
-                    {
-                    helpers : {
-                      thumbs : {
-                        width: 64,
-                        height: 64,
-                        source: function (item) {
-                          return(item["thumbnail"]);
+                        if(!(/\.(jpg|jpeg)$/i.test(hiddenPhoto[0]))) {
+                          thumbSrc = "thumbnails/" + hiddenPhoto[0].replace(/\.[^.]*$/, ".jpg");
+                        } else {
+                          thumbSrc = "thumbnails/" + hiddenPhoto[0];
+                        }
+                        if(!(/\.webm$/i.test(hiddenPhoto[0]))) {
+                          imgSrc = "photos/" + hiddenPhoto[0];
+                          fancyPhotos.push({href: imgSrc, title: hiddenPhoto[0] + "<br />" + hiddenPhoto[2], thumbnail: thumbSrc});
+                        } else {
+                          fancyPhotos.push({title: hiddenPhoto[0] + "<br />" + hiddenPhoto[2], thumbnail: thumbSrc, isDom: true, arrows: false, aspectRatio: true, scrolling: "no",
+                                            afterShow: function() {
+                                              $.fancybox.update();
+                                            },
+                                            element: $('<video controls="controls"><source src="photos/' + hiddenPhoto[0] + '"></video>')});
+                          /*fancyPhotos.push($('<video controls="controls"><source src="photos/' + hiddenPhoto[0] + '"></video>').on("canplay", function () {
+                            //load stuff
+                            //$.fancybox.wrap.removeClass('fancybox-tmp');
+                            //$.fancybox._setDimension();
+                          }));*/
                         }
                       }
-                    }
-                  });
-                  //photoInfoWindow.setContent('<img style="max-width: 100%; max-height: 100%" src="' + imgSrc + '">');
-                  //photoInfoWindow.open(map, currentPhoto["marker"]);
+                    });
+                    $.fancybox.open(
+                      fancyPhotos,
+                      {
+                        helpers : {
+                          thumbs : {
+                            width: 64,
+                            height: 64,
+                            source: function (item) {
+                              return(item["thumbnail"]);
+                            }
+                          }
+                        }, beforeLoad: function() {
+                          if($.isFunction(this.href)) {
+                            this.href = this.href();
+                          }
+                          if($.isFunction(this.thumbnail)) {
+                            this.thumbnail = this.thumbnail();
+                          }
+                          if(/^data:/.exec(this.href)) {
+                            if(/^data:image/.exec(this.href)) {
+                              this.type = 'image';
+                            }
+                          }
+                        }
+                      });
+                    //photoInfoWindow.setContent('<img style="max-width: 100%; max-height: 100%" src="' + imgSrc + '">');
+                    //photoInfoWindow.open(map, currentPhoto["marker"]);
+                  }
                 });
               }
             }
