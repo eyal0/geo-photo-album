@@ -492,7 +492,6 @@ Partial Class MainForm
         Me.lvFileTags.GridLines = True
         Me.lvFileTags.LargeImageList = Me.LargeImageList
         Me.lvFileTags.Location = New System.Drawing.Point(0, 0)
-        Me.lvFileTags.my_json = Nothing
         Me.lvFileTags.Name = "lvFileTags"
         Me.lvFileTags.ShowGroups = False
         Me.lvFileTags.Size = New System.Drawing.Size(649, 523)

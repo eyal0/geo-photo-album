@@ -433,7 +433,6 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
 #End Region
 
 #Region "Tag Files"
-    Dim myJson As New Json
     Dim MRU_rows As New Dictionary(Of String, Json)
     Dim MRU_keys As New List(Of String)
 
@@ -452,8 +451,7 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
             txtTagFile.Text = ofd.FileName
             'Now load in the tags and everything else
             If System.IO.File.Exists(txtTagFile.Text) Then
-                myJson.MergeFile(txtTagFile.Text)
-                lvFileTags.my_json = myJson
+                lvFileTags.my_json.MergeFile(txtTagFile.Text)
             End If
         End If
         ofd.Dispose()
@@ -470,16 +468,24 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
     End Sub
 
     Private Sub btnSaveJson_Click(sender As System.Object, e As System.EventArgs) Handles btnSaveJson.Click
-        System.IO.File.WriteAllLines(txtTagFile.Text, myJson.ToJson)
+        System.IO.File.WriteAllLines(txtTagFile.Text, lvFileTags.my_json.ToJson)
     End Sub
 
     Private Sub btnSaveTags_Click(sender As System.Object, e As System.EventArgs) Handles btnSaveTags.Click
-        If Not myJson.ContainsKey("Tags") Then
-            myJson.Add("Tags", New Json)
+        If Not lvFileTags.my_json.ContainsKey("Tags") Then
+            lvFileTags.my_json.Add("Tags", New Json)
         End If
         Dim json_all_tags As Json
-        json_all_tags = myJson("Tags")
+        json_all_tags = lvFileTags.my_json("Tags")
         Dim for_addition As Json = Json.FromString(txtTags.Text)
+        Dim various As New List(Of Boolean)
+        For mru_index As Integer = 0 To MRU_keys.Count - 1
+            Dim mru_index1 As Integer = mru_index
+            various.Add(MRU_rows(MRU_keys(mru_index)).Count = 0 OrElse _
+                        Not MRU_rows(MRU_keys(mru_index)).Values.All(Function(j As Json)
+                                                                         Return MRU_rows(MRU_keys(mru_index1)).Values(0) = j
+                                                                     End Function))
+        Next
         For Each selected_index As Integer In lvFileTags.SelectedIndices
             Dim current_hash As String = lvFileTags.Hash(selected_index)
             If Not json_all_tags.ContainsKey(current_hash) Then
@@ -493,6 +499,13 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
                         json_all_tags(current_hash)(MRU_keys(mru_index)) = MRU_rows(MRU_keys(mru_index))(current_hash)
                     End If
                     AddAutoTag(New KeyValuePair(Of String, Json)(MRU_keys(mru_index), MRU_rows(MRU_keys(mru_index))(current_hash)))
+                ElseIf lstTagsMRU.GetItemCheckState(mru_index) = CheckState.Checked AndAlso Not various(mru_index) Then
+                    If Not json_all_tags(current_hash).ContainsKey(MRU_keys(mru_index)) Then
+                        json_all_tags(current_hash).Add(MRU_keys(mru_index), MRU_rows(MRU_keys(mru_index)).Values(0))
+                    Else
+                        json_all_tags(current_hash)(MRU_keys(mru_index)) = MRU_rows(MRU_keys(mru_index)).Values(0)
+                    End If
+                    AddAutoTag(New KeyValuePair(Of String, Json)(MRU_keys(mru_index), MRU_rows(MRU_keys(mru_index)).Values(0)))
                 ElseIf lstTagsMRU.GetItemCheckState(mru_index) = CheckState.Unchecked Then
                     If (json_all_tags(current_hash).ContainsKey(MRU_keys(mru_index)) AndAlso
                         json_all_tags(current_hash)(MRU_keys(mru_index)) = MRU_rows(MRU_keys(mru_index))(current_hash)) Then
@@ -524,18 +537,18 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
     End Sub
 
     Private Sub AddAutoTag(kvp As KeyValuePair(Of String, Json))
-        If Not myJson.ContainsKey("TagsMRU") Then
-            myJson.Add("TagsMRU", New Json)
+        If Not lvFileTags.my_json.ContainsKey("TagsMRU") Then
+            lvFileTags.my_json.Add("TagsMRU", New Json)
         End If
-        If Not myJson("TagsMRU").IsArray Then
-            myJson("TagsMRU") = New Json
+        If Not lvFileTags.my_json("TagsMRU").IsArray Then
+            lvFileTags.my_json("TagsMRU") = New Json
         End If
         Dim tag As New Json
         tag.Add(kvp.Key, kvp.Value)
         If kvp.Key <> "DateTime" AndAlso kvp.Key <> "Filename" AndAlso Not kvp.Key.StartsWith("Gps") Then
-            If Not myJson("TagsMRU")(0) = tag Then
-                myJson("TagsMRU").Remove(tag)
-                myJson("TagsMRU").Insert(0, tag)
+            If lvFileTags.my_json("TagsMRU").IsArray AndAlso lvFileTags.my_json("TagsMRU").Count > 0 AndAlso Not lvFileTags.my_json("TagsMRU")(0) = tag Then
+                lvFileTags.my_json("TagsMRU").Remove(tag)
+                lvFileTags.my_json("TagsMRU").Insert(0, tag)
             End If
         End If
     End Sub
@@ -578,9 +591,9 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
         End If
         ret.Add(New KeyValuePair(Of String, Json)("Filename", New Json(filename)))
 
-        If myJson.ContainsKey("TagsMRU") Then
-            If myJson("TagsMRU").IsArray Then
-                For Each tag As Json In myJson("TagsMRU")
+        If lvFileTags.my_json.ContainsKey("TagsMRU") Then
+            If lvFileTags.my_json("TagsMRU").IsArray Then
+                For Each tag As Json In lvFileTags.my_json("TagsMRU")
                     ret.Add(New KeyValuePair(Of String, Json)(tag.Keys(0), tag(tag.Keys(0))))
                 Next
             End If
@@ -754,6 +767,17 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
 
         Public Function ToJson(relative_path As String) As Json
             Dim ret As New Json
+            If (relative_path.EndsWith(".jpg", StringComparison.CurrentCultureIgnoreCase) OrElse
+                        relative_path.EndsWith(".jpeg", StringComparison.CurrentCultureIgnoreCase) OrElse
+                        relative_path.EndsWith(".webm", StringComparison.CurrentCultureIgnoreCase)) Then
+                'do nothing
+            ElseIf (relative_path.EndsWith(".mov", StringComparison.CurrentCultureIgnoreCase) OrElse
+                    relative_path.EndsWith(".avi", StringComparison.CurrentCultureIgnoreCase) OrElse
+                    relative_path.EndsWith(".mp4", StringComparison.CurrentCultureIgnoreCase)) Then
+                relative_path = relative_path.Substring(0, relative_path.LastIndexOf(".")) + ".webm"
+            Else
+                Throw New ApplicationException("Unrecognized file extension" & relative_path)
+            End If
             ret.Add(New Json(relative_path))
             ret.Add(New Json(Rank))
             ret.Add(New Json(DTO.ToString("yyyy-MM-ddTHH\:mm\:ss.fffffffzzz", Globalization.CultureInfo.InvariantCulture)))
@@ -829,76 +853,7 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
         Property RandomBytesPlus1Encrypted As Byte()
     End Class
 
-    Public Shared Sub ResizeJpeg(ByVal filePathSource As String, filePathDestination As String, ByVal maxWidth As Integer, ByVal maxHeight As Integer, orientation As Integer)
-        Dim imgPhoto As System.Drawing.Image = System.Drawing.Image.FromFile(filePathSource)
-        ResizeJpeg(imgPhoto, filePathDestination, maxWidth, maxHeight, orientation)
-    End Sub
-
-    Public Shared Sub ResizeJpeg(ByVal imgPhoto As System.Drawing.Image, filePathDestination As String, ByVal maxWidth As Integer, ByVal maxHeight As Integer, orientation As Integer)
-        Select Case orientation
-            Case 1
-                imgPhoto.RotateFlip(RotateFlipType.RotateNoneFlipNone)
-            Case 2
-                imgPhoto.RotateFlip(RotateFlipType.RotateNoneFlipX)
-            Case 3
-                imgPhoto.RotateFlip(RotateFlipType.Rotate180FlipNone)
-            Case 4
-                imgPhoto.RotateFlip(RotateFlipType.Rotate180FlipX)
-            Case 5
-                imgPhoto.RotateFlip(RotateFlipType.Rotate90FlipX)
-            Case 6
-                imgPhoto.RotateFlip(RotateFlipType.Rotate90FlipNone)
-            Case 7
-                imgPhoto.RotateFlip(RotateFlipType.Rotate270FlipX)
-            Case 8
-                imgPhoto.RotateFlip(RotateFlipType.Rotate270FlipNone)
-        End Select
-        Dim sourceWidth As Integer = imgPhoto.Width
-        Dim sourceHeight As Integer = imgPhoto.Height
-        Dim nPercentW As Single = (CType(maxWidth, Single) / CType(sourceWidth, Single))
-        Dim nPercentH As Single = (CType(maxHeight, Single) / CType(sourceHeight, Single))
-        'if we have to pad the height pad both the top and the bottom
-        'with the difference between the scaled height and the desired height
-        Dim nPercent As Single = Math.Min(nPercentH, nPercentW)
-        Dim destLeft As Integer = 0
-        Dim destTop As Integer = 0
-        Dim destWidth As Integer = CType((sourceWidth * nPercent), Integer)
-        Dim destHeight As Integer = CType((sourceHeight * nPercent), Integer)
-        Dim bmPhoto As Bitmap = New Bitmap(imgPhoto, destWidth, destHeight)
-        bmPhoto.SetResolution(imgPhoto.HorizontalResolution, imgPhoto.VerticalResolution)
-        Dim grPhoto As Graphics = Graphics.FromImage(bmPhoto)
-        grPhoto.InterpolationMode = Drawing2D.InterpolationMode.HighQualityBicubic
-        grPhoto.SmoothingMode = Drawing2D.SmoothingMode.HighQuality
-        grPhoto.PixelOffsetMode = Drawing2D.PixelOffsetMode.HighQuality
-        Dim destRect As Rectangle = New Rectangle(destLeft, destTop, destWidth, destHeight)
-        grPhoto.DrawImage(imgPhoto, destRect, New Rectangle(0, 0, sourceWidth, sourceHeight), GraphicsUnit.Pixel)
-        grPhoto.Dispose()
-        Try
-            For Each propertyItem As Imaging.PropertyItem In imgPhoto.PropertyItems
-                If propertyItem.Id = ExifLib.ExifTags.Orientation AndAlso propertyItem.Value(0) <> 1 Then
-                    propertyItem.Value(0) = 1
-                End If
-                    Try
-                        bmPhoto.SetPropertyItem(propertyItem)
-                    Catch
-                        'nothing
-                    End Try
-            Next
-        Catch
-            'nothing
-        End Try
-        Dim enc As System.Drawing.Imaging.Encoder = System.Drawing.Imaging.Encoder.Quality
-        Dim encParms As System.Drawing.Imaging.EncoderParameters = New Imaging.EncoderParameters(1)
-        Dim encParm As System.Drawing.Imaging.EncoderParameter = New Imaging.EncoderParameter(enc, 100L)
-        encParms.Param(0) = encParm
-        Dim codecInfo() As Imaging.ImageCodecInfo = Imaging.ImageCodecInfo.GetImageEncoders
-        Dim codecInfoJpeg As Imaging.ImageCodecInfo = codecInfo(1)
-        bmPhoto.Save(filePathDestination, codecInfoJpeg, encParms)
-        bmPhoto.Dispose()
-        imgPhoto.Dispose()
-    End Sub
-
-    Private ForceOverwrite As Boolean = False
+    Private ForceOverwrite As Boolean = True
 
     Private Sub btnOutput_Click(sender As Object, e As EventArgs) Handles btnOutput.Click
         Dim sources As New List(Of String)
@@ -988,7 +943,10 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
             Next
             'TODO: later here we will sort by rank from the shootout
             Dim current_rank As Integer = 0
-            Dim photo_info As Json = Json.FromFile(IO.Path.Combine(destination, "photo_info.json"))
+            Dim photo_info As New Json
+            If IO.File.Exists(IO.Path.Combine(destination, "photo_info.json")) Then
+                photo_info = Json.FromFile(IO.Path.Combine(destination, "photo_info.json"))
+            End If
             'Convert photos to dictionary for speed
             Dim photo_dict As New Dictionary(Of String, Json)
             If photo_info.ContainsKey("photos") Then
@@ -1015,6 +973,17 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
                         IO.Directory.CreateDirectory(IO.Path.GetDirectoryName(thumbnail_dest_file))
                     End If
                     Dim dest_file As String = IO.Path.Combine(destination, "photos", relative_path)
+                    If (relative_path.EndsWith(".jpg", StringComparison.CurrentCultureIgnoreCase) OrElse
+                        relative_path.EndsWith(".jpeg", StringComparison.CurrentCultureIgnoreCase) OrElse
+                        relative_path.EndsWith(".webm", StringComparison.CurrentCultureIgnoreCase)) Then
+                        dest_file = IO.Path.Combine(destination, "photos", relative_path)
+                    ElseIf (relative_path.EndsWith(".mov", StringComparison.CurrentCultureIgnoreCase) OrElse
+                            relative_path.EndsWith(".avi", StringComparison.CurrentCultureIgnoreCase) OrElse
+                            relative_path.EndsWith(".mp4", StringComparison.CurrentCultureIgnoreCase)) Then
+                        dest_file = IO.Path.Combine(destination, "photos", relative_path.Substring(0, relative_path.LastIndexOf(".")) + ".webm")
+                    Else
+                        Throw New ApplicationException("Unrecognized file extension" & relative_path)
+                    End If
                     relative_path = relative_path.Replace(IO.Path.DirectorySeparatorChar, "/")
                     If Not IO.Directory.Exists(IO.Path.GetDirectoryName(dest_file)) Then
                         IO.Directory.CreateDirectory(IO.Path.GetDirectoryName(dest_file))
@@ -1031,7 +1000,10 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
                     Else
                         For Each current_password As String In current_photo.Passwords
                             If Not passwords.ContainsKey(current_password) Then
-                                Dim possible_pinfo As PasswordInfo = PasswordInfo.FromJsons(current_password, photo_info("passwords"))
+                                Dim possible_pinfo As PasswordInfo = Nothing
+                                If photo_info.ContainsKey("passwords") Then
+                                    possible_pinfo = PasswordInfo.FromJsons(current_password, photo_info("passwords"))
+                                End If
                                 If possible_pinfo IsNot Nothing Then
                                     passwords.Add(current_password, possible_pinfo)
                                 Else
@@ -1059,28 +1031,47 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
                             write_dest = True
                             write_thumbnail = True
                         End If
-                        End If
-                        If write_dest Then
+                    End If
+                    If write_dest Then
                         If (relative_path.EndsWith(".jpg", StringComparison.CurrentCultureIgnoreCase) OrElse
                             relative_path.EndsWith(".jpeg", StringComparison.CurrentCultureIgnoreCase)) Then
-                            ResizeJpeg(current_photo.Filename, dest_file, 1600, 1600, current_photo.Orientation)
+                            ResizeJpegMax(current_photo.Filename, dest_file, 1600, 1600, current_photo.Orientation)
                         ElseIf (relative_path.EndsWith(".avi", StringComparison.CurrentCultureIgnoreCase) OrElse
                                 relative_path.EndsWith(".mov", StringComparison.CurrentCultureIgnoreCase)) Then
-                            IO.File.Copy(current_photo.Filename, dest_file, True)
+                            ' Start the child process.
+                            Dim p As New Process()
+                            ' Redirect the output stream of the child process.
+                            p.StartInfo.UseShellExecute = False
+                            p.StartInfo.RedirectStandardOutput = True
+                            'p.StartInfo.RedirectStandardError = True
+                            p.StartInfo.CreateNoWindow = True
+                            p.StartInfo.FileName = IO.Path.Combine(IO.Directory.GetCurrentDirectory, "ffmpeg.exe")
+                            p.StartInfo.Arguments = "-y -i """ & current_photo.Filename & """ """ & dest_file & """"
+                            p.Start()
+                            '' Do not wait for the child process to exit before
+                            '' reading to the end of its redirected stream.
+                            ''p.WaitForExit()
+                            '' Read the output stream first and then wait.
+                            Dim output As String = p.StandardOutput.ReadToEnd()
+                            p.WaitForExit()
+                            'Debug.WriteLine(output)
+                            'output = p.StandardError.ReadToEnd()
+                            'Debug.WriteLine(output)
+
                         Else
-                            Debug.WriteLine("Unknown file type " & relative_path)
+                            Throw New ApplicationException("Unknown file type " & relative_path)
                         End If
                     End If
                     If write_thumbnail Then
                         If (relative_path.EndsWith(".jpg", StringComparison.CurrentCultureIgnoreCase) OrElse
                             relative_path.EndsWith(".jpeg", StringComparison.CurrentCultureIgnoreCase)) Then
-                            ResizeJpeg(current_photo.Filename, thumbnail_dest_file, 64, 64, current_photo.Orientation)
+                            ResizeJpegMin(current_photo.Filename, thumbnail_dest_file, 48, 48, current_photo.Orientation)
                         ElseIf (relative_path.EndsWith(".avi", StringComparison.CurrentCultureIgnoreCase) OrElse
                                 relative_path.EndsWith(".mov", StringComparison.CurrentCultureIgnoreCase)) Then
                             Dim b As Bitmap = GetFrameFromVideo(current_photo.Filename, 0.3)
-                            ResizeJpeg(b, thumbnail_dest_file, 64, 64, current_photo.Orientation)
+                            ResizeJpegMin(b, thumbnail_dest_file, 48, 48, current_photo.Orientation)
                         Else
-                            Debug.WriteLine("Unknown file type " & relative_path)
+                            Throw New ApplicationException("Unknown file type " & relative_path)
                         End If
                     End If
                     'encrypt if needed

@@ -102,6 +102,9 @@
     <Compile Include="Coordinate.vb" />
     <Compile Include="Csv.vb" />
     <Compile Include="EnumerableExtensions.vb" />
+    <Compile Include="FileView.Designer.vb">
+      <DependentUpon>FileView.vb</DependentUpon>
+    </Compile>
     <Compile Include="FileView.vb">
       <SubType>Component</SubType>
     </Compile>
@@ -132,6 +135,7 @@
     </Compile>
     <Compile Include="PointD.vb" />
     <Compile Include="CryptoHelpers.vb" />
+    <Compile Include="ResizeJpeg.vb" />
     <Compile Include="SHGetFileInfo.vb" />
     <Compile Include="Shootout.vb" />
     <Compile Include="Video.vb" />
@@ -180,6 +184,11 @@
       <Isolated>False</Isolated>
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </COMReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="ffmpeg.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.VisualBasic.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
