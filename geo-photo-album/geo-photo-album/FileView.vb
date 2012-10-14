@@ -1,23 +1,14 @@
 ﻿Public Class FileView
-    Inherits ListView
-
     Private WithEvents m_changeDelayTimer As Timer = Nothing
     Dim bw As Threading.Thread
-    Property my_json As Json
+    Public my_json As New Json
 
     Sub New()
+        InitializeComponent()
         If Not SystemInformation.TerminalServerSession Then
             DoubleBuffered = True
             SetStyle(ControlStyles.ResizeRedraw, True)
         End If
-    End Sub
-
-    Protected Overrides Sub Dispose(disposing As Boolean)
-        If disposing AndAlso m_changeDelayTimer IsNot Nothing Then
-            RemoveHandler m_changeDelayTimer.Tick, AddressOf ChangeDelayTimerTick
-            m_changeDelayTimer.Dispose()
-        End If
-        MyBase.Dispose(disposing)
     End Sub
 
     Protected Overrides Sub OnSelectedIndexChanged(e As EventArgs)
@@ -78,7 +69,7 @@
 
     ReadOnly Property Json(index As Integer) As Json
         Get
-            If my_json("Tags").ContainsKey(Hash(index)) Then
+            If my_json.ContainsKey("Tags") AndAlso my_json("Tags").ContainsKey(Hash(index)) Then
                 Return my_json("Tags")(Hash(index))
             Else
                 Return Nothing
@@ -102,7 +93,7 @@
         Dim lvi As New ListViewItem(l.text)
         lvi.ImageKey = CacheShellIcon(l.fullname)
         lvi.Tag = l
-        If Not l.IsDirectory AndAlso my_json("Tags").ContainsKey(l.hash) Then
+        If Not l.IsDirectory AndAlso my_json.ContainsKey("Tags") AndAlso my_json("Tags").ContainsKey(l.hash) Then
             lvi.SubItems.Add(my_json("Tags")(l.hash).ToString)
         End If
         Me.InvokeEx(Sub() Me.Items.Add(lvi))
@@ -175,5 +166,11 @@
             Loop
             Me.Filter = s
         End If
+    End Sub
+
+    Protected Overrides Sub OnPaint(ByVal e As System.Windows.Forms.PaintEventArgs)
+        MyBase.OnPaint(e)
+
+        'Add your custom paint code here
     End Sub
 End Class
