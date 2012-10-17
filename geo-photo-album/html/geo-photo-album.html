@@ -698,6 +698,8 @@
         url += "?t=" + t;
         url += "&z=" + map.getZoom();
         url += "&ll=" + map.getCenter().lat() + "," + map.getCenter().lng();
+        url += "&startdate=" + startDateTime.getTime();
+        url += "&enddate=" + endDateTime.getTime(); //TODO, add a day
         return(url);
       }
       
