@@ -333,6 +333,9 @@
       }
       
       function parseDate(val) {
+        if(!isNaN(val)) {
+          return new Date(parseInt(val));
+        }
         if($.browser.msie && typeof(val) == "string") {
           val = val.replace(/\.[0-9]*/,"");
         }
@@ -711,11 +714,11 @@
         url += "?t=" + t;
         url += "&z=" + map.getZoom();
         url += "&ll=" + map.getCenter().lat() + "," + map.getCenter().lng();
-        url += "&startdate=" + startDateTime.getTime();
-        url += "&enddate=" + endDateTime.getTime(); //TODO, add a day
-        return(url);
+        url += "&startdatetime=" + startDateTime.getTime();
+        url += "&enddatetime=" + endDateTime.clone().addDays(1).getTime();
+        $("#perm_link").attr("href", url).text(url);
       }
-      
+
       function initialize() {
         map = new google.maps.Map(document.getElementById('map_canvas'), urlToMapOptions(location.href));
 
@@ -811,8 +814,14 @@
           }
           minDateTime.truncateDate();
           maxDateTime.truncateDate();
-          startDateTime = minDateTime.clone();
-          endDateTime = maxDateTime.clone();
+          startDateTime = parseDate(getURLParameter(location.href, "startdatetime"));
+          if(!startDateTime || startDateTime < minDateTime || endDateTime > maxDateTime) {
+            startDateTime = minDateTime.clone();
+          }
+          endDateTime = parseDate(getURLParameter(location.href, "enddatetime")).clone().addDays(-1);
+          if(!endDateTime || endDateTime < minDateTime || endDateTime > maxDateTime) {
+            endDateTime = maxDateTime.clone();
+          }
           var days = minDateTime.daysUntil(maxDateTime);
           var div = document.createElement("div");
           div.innerHTML = '<div id="date_slider"></div>' +
@@ -825,7 +834,7 @@
                           '<label for="#perm_link">Permanent link:</label> <a href="" id="perm_link"></a>';
           div.id = "date_range";
           map.controls[google.maps.ControlPosition.BOTTOM_LEFT].push(div);
-          $(div.getElementById("date_slider")).slider({animate: true, "step": 1, min: 0, max: days+1, values: [0, days+1], range: true});
+          $(div.getElementById("date_slider")).slider({animate: true, "step": 1, min: 0, max: days+1, values: [minDateTime.daysUntil(startDateTime), minDateTime.daysUntil(endDateTime)+1], range: true});
           $(div.getElementById("date_slider")).on("slide", function(event, ui) {
             if(ui.values[0] >= ui.values[1]) {
               if(ui.handle == $("#date_slider a")[0]) {
@@ -842,10 +851,12 @@
             }
             if($("#start_datepicker").datepicker("getDate").getTime() != minDateTime.clone().addDays(ui.values[0]).getTime()) {
               startDateTime = minDateTime.clone().addDays(ui.values[0]);
+              mapOptionsToUrl();
               $("#start_datepicker").datepicker("setDate", startDateTime);
             }
             if($("#end_datepicker").datepicker("getDate").getTime() != minDateTime.clone().addDays(ui.values[1]-1).getTime()) {
               endDateTime = minDateTime.clone().addDays(ui.values[1]-1);
+              mapOptionsToUrl();
               $("#end_datepicker").datepicker("setDate", endDateTime);
             }
             var sliderTimeout = null;
@@ -858,30 +869,32 @@
               }, 500);
             }
           });
-          $(div.getElementById("start_datepicker")).datepicker({appendText: "(yyyy-mm-dd)", dateFormat: "yy-mm-dd", minDate: minDateTime, maxDate: maxDateTime, defaultDate: minDateTime,
+          $(div.getElementById("start_datepicker")).datepicker({appendText: "(yyyy-mm-dd)", dateFormat: "yy-mm-dd", minDate: minDateTime, maxDate: maxDateTime, defaultDate: startDateTime,
                                              showOn: "button", buttonImageOnly: true, buttonImage: "images/calendar.gif",
                                              onSelect: function(dateText, inst) {
                                                if($("#start_datepicker").datepicker("getDate").getTime() != minDateTime.clone().addDays($("#date_slider").slider('values', 0)).getTime()) {
                                                  startDateTime = $("#start_datepicker").datepicker("getDate");
+                                                 mapOptionsToUrl();
                                                  $("#date_slider").slider("values", 0, minDateTime.daysUntil($("#start_datepicker").datepicker("getDate")));
                                                }
                                                load_polyline(true, $("#auto_zoom")[0].checked);
                                                load_photos();
                                              }
                                             });
-          $(div.getElementById("start_datepicker")).datepicker("setDate", minDateTime);
-          $(div.getElementById("end_datepicker")).datepicker({appendText: "(yyyy-mm-dd)", dateFormat: "yy-mm-dd", minDate: minDateTime, maxDate: maxDateTime, defaultDate: maxDateTime,
+          $(div.getElementById("start_datepicker")).datepicker("setDate", startDateTime);
+          $(div.getElementById("end_datepicker")).datepicker({appendText: "(yyyy-mm-dd)", dateFormat: "yy-mm-dd", minDate: minDateTime, maxDate: maxDateTime, defaultDate: endDateTime,
                                            showOn: "button", buttonImageOnly: true, buttonImage: "images/calendar.gif",
                                            onSelect: function(dateText, inst) {
                                              if($("#end_datepicker").datepicker("getDate").getTime() != minDateTime.clone().addDays($("#date_slider").slider('values', 1)-1).getTime()) {
                                                endDateTime = $("#end_datepicker").datepicker("getDate");
+                                               mapOptionsToUrl();
                                                $("#date_slider").slider("values", 1, minDateTime.daysUntil($("#end_datepicker").datepicker("getDate"))+1);
                                              }
                                              load_polyline(true, $("#auto_zoom")[0].checked);
                                              load_photos();
                                            }
                                           });
-          $(div.getElementById("end_datepicker")).datepicker("setDate", maxDateTime);
+          $(div.getElementById("end_datepicker")).datepicker("setDate", endDateTime);
           var passwordTimeout;
           $(div.getElementById("password_text")).on('input', function(e) {
             if(passwordTimeout) {
@@ -929,12 +942,10 @@
           google.maps.event.addListener(map, 'idle', load_polyline);
           google.maps.event.addListener(map, 'idle', load_photos);
           google.maps.event.addListener(map, 'idle', function() {
-            var url = mapOptionsToUrl();
-            $("#perm_link").attr("href", url).text(url);
+            mapOptionsToUrl();
           });
           google.maps.event.addListener(map, 'maptypeid_changed', function() {
-            var url = mapOptionsToUrl();
-            $("#perm_link").attr("href", url).text(url);
+            mapOptionsToUrl();
           });
         });
         $.getJSON("photo_info.json", function(data) {
