@@ -102,6 +102,12 @@
         max-width: 100%;
         max-height: 100%;
       }
+      
+      .fancybox-nav.fancybox-nav-video {
+        height: auto;
+        top: 0;
+        bottom: 35px;
+      }
     </style>
     <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.21/themes/start/jquery-ui.css">
     <script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?sensor=false"></script>
@@ -342,7 +348,9 @@
           currentPhoto["hides"] = [];
           var currentLatLng = new google.maps.LatLng(currentPhoto[3],currentPhoto[4]);
           var current_time = (parseDate(currentPhoto[2])).getTime();
-          if(current_time >= startDateTime.getTime() && current_time < endDateTime.getTime() && bounds.contains(currentLatLng)) {
+          var start_time = startDateTime.getTime();
+          var end_time = endDateTime.clone().addDays(1).getTime();
+          if(current_time >= start_time && current_time < end_time && bounds.contains(currentLatLng)) {
             var currentPoint = fromLatLngToPoint(currentLatLng);
             currentPhoto["displayed"] = true;
             if(currentPhoto.length > 5 && !currentPhoto["imageKey"]) {
@@ -481,22 +489,27 @@
                           fancyPhotos.push({metadataReady: false, showReady: false,
                                             title: hiddenPhoto[0] + "<br />" + hiddenPhoto[2], thumbnail: thumbSrc, isDom: true, aspectRatio: true, scrolling: "no",
                                             afterShow: function() {
+                                              $(".fancybox-nav").addClass("fancybox-nav-video");
                                               this.element[0].showReady = true;
                                               if(this.element[0].showReady && this.element[0].metadataReady) {
-                                                $.fancybox.update();
-                                                $(".fancybox-nav").height( $(".fancybox-nav").height() - 35);
+                                                if(this.element[0].width != this.element[0].videoWidth || this.element[0].height != this.element[0].videoHeight) {
+                                                  this.element[0].width = this.element[0].videoWidth;
+                                                  this.element[0].height = this.element[0].videoHeight;
+                                                  $.fancybox.update();
+                                                }
                                               }
                                             },
                                             element: $('<video controls="controls"><source src="photos/' + hiddenPhoto[0] + '"></video>').on("loadedmetadata", function() {
                                               this.metadataReady = true;
-                                              this.width = this.videoWidth;
-                                              this.height = this.videoHeight;
                                               if(this.showReady && this.metadataReady) {
-                                                $.fancybox.update();
-                                                $(".fancybox-nav").height( $(".fancybox-nav").height() - 35);
+                                                if(this.width != this.videoWidth || this.height != this.videoHeight) {
+                                                  this.width = this.videoWidth;
+                                                  this.height = this.videoHeight;
+                                                  $.fancybox.update();
+                                                }
                                               }
                                             })
-                                            });
+                                          });
                           /*fancyPhotos.push($('<video controls="controls"><source src="photos/' + hiddenPhoto[0] + '"></video>').on("canplay", function () {
                             //load stuff
                             //$.fancybox.wrap.removeClass('fancybox-tmp');
@@ -589,7 +602,7 @@
                         var newPath = [];
                         var newBounds = new google.maps.LatLngBounds();
                         var start_time = startDateTime.getTime();
-                        var end_time = endDateTime.getTime();
+                        var end_time = endDateTime.clone().addDays(1).getTime();
                         gpsPoints = mergeSortGpsPoints(gpsPoints, val);
                         updatePath(true, autoZoom);
                       }
@@ -616,9 +629,9 @@
         return function(force, autoZoom, keepGoing) {
           if(!keepGoing ||
              currentStartTime === null || currentStartTime != startDateTime.getTime() ||
-             currentEndTime === null || currentEndTime != endDateTime.getTime()) {
+             currentEndTime === null || currentEndTime != endDateTime.clone().addDays(1).getTime()) {
             currentStartTime = startDateTime.getTime();
-            currentEndTime = endDateTime.getTime();
+            currentEndTime = endDateTime.clone().addDays(1).getTime();
             startGpsIndex = gpsPoints.indexOfLambda(function(x) { return(currentStartTime <= parseDate(x[1]).getTime()); });
             endGpsIndex = gpsPoints.indexOfLambda(function(x) { return(currentEndTime < parseDate(x[1]).getTime()); });
             currentPath = [];
