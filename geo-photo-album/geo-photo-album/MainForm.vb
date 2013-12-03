@@ -853,7 +853,7 @@ FoundSmallFile:         If use_bigger_tile Then 'there are small tiles and the b
         Property RandomBytesPlus1Encrypted As Byte()
     End Class
 
-    Private ForceOverwrite As Boolean = True
+    Private ForceOverwrite As Boolean = False
 
     Private Sub btnOutput_Click(sender As Object, e As EventArgs) Handles btnOutput.Click
         Dim sources As New List(Of String)
