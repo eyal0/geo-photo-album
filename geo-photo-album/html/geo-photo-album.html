@@ -333,7 +333,10 @@
       }
       
       function parseDate(val) {
-        if(!isNaN(val)) {
+        if(val === null) {
+          return(null);
+        }
+        if(typeof(val) === "number" || /^[0-9]+$/.exec(val)) {
           return new Date(parseInt(val));
         }
         if($.browser.msie && typeof(val) == "string") {
@@ -352,7 +355,7 @@
           var currentLatLng = new google.maps.LatLng(currentPhoto[3],currentPhoto[4]);
           var current_time = (parseDate(currentPhoto[2])).getTime();
           var start_time = startDateTime.getTime();
-          var end_time = endDateTime.clone().addDays(1).getTime();
+          var end_time = endDateTime.getTime();
           if(current_time >= start_time && current_time < end_time && bounds.contains(currentLatLng)) {
             var currentPoint = fromLatLngToPoint(currentLatLng);
             currentPhoto["displayed"] = true;
@@ -584,10 +587,10 @@
         for(var current_zoom in tileFiles) {
           if(current_zoom <= zoom_level) {
             //tile is 2048x2048.  2048 is 2**11.
-            var current_west = bound(sw_point.x,0,255) << current_zoom;
-            var current_south = bound(sw_point.y,0,255) << current_zoom;
-            var current_east = bound(ne_point.x,0,255) << current_zoom;
-            var current_north = bound(ne_point.y,0,255) << current_zoom;
+            var current_west = bound(sw_point.x,0,255) * (1 << current_zoom);
+            var current_south = bound(sw_point.y,0,255) * (1 << current_zoom);
+            var current_east = bound(ne_point.x,0,255) * (1 << current_zoom);
+            var current_north = bound(ne_point.y,0,255) * (1 << current_zoom);
             for (var logTileSize in tileFiles[current_zoom]) {
               for(var i = Math.floor(current_west>>logTileSize); i <= Math.floor(current_east>>logTileSize); i++) {
                 for(var j = Math.floor(current_north>>logTileSize); j <= Math.floor(current_south>>logTileSize); j++) {
@@ -605,7 +608,7 @@
                         var newPath = [];
                         var newBounds = new google.maps.LatLngBounds();
                         var start_time = startDateTime.getTime();
-                        var end_time = endDateTime.clone().addDays(1).getTime();
+                        var end_time = endDateTime.getTime();
                         gpsPoints = mergeSortGpsPoints(gpsPoints, val);
                         updatePath(true, autoZoom);
                       }
@@ -632,9 +635,9 @@
         return function(force, autoZoom, keepGoing) {
           if(!keepGoing ||
              currentStartTime === null || currentStartTime != startDateTime.getTime() ||
-             currentEndTime === null || currentEndTime != endDateTime.clone().addDays(1).getTime()) {
+             currentEndTime === null || currentEndTime != endDateTime.getTime()) {
             currentStartTime = startDateTime.getTime();
-            currentEndTime = endDateTime.clone().addDays(1).getTime();
+            currentEndTime = endDateTime.getTime();
             startGpsIndex = gpsPoints.indexOfLambda(function(x) { return(currentStartTime <= parseDate(x[1]).getTime()); });
             endGpsIndex = gpsPoints.indexOfLambda(function(x) { return(currentEndTime < parseDate(x[1]).getTime()); });
             currentPath = [];
@@ -715,7 +718,7 @@
         url += "&z=" + map.getZoom();
         url += "&ll=" + map.getCenter().lat() + "," + map.getCenter().lng();
         url += "&startdatetime=" + startDateTime.getTime();
-        url += "&enddatetime=" + endDateTime.clone().addDays(1).getTime();
+        url += "&enddatetime=" + endDateTime.getTime();
         $("#perm_link").attr("href", url).text(url);
       }
 
@@ -797,8 +800,9 @@
             }
           }
           Date.prototype.clone = function() { return parseDate(this.getTime()); };
-          Date.prototype.truncateDate = function() { this.setHours(0); this.setMinutes(0); this.setSeconds(0); this.setMilliseconds(0); };
+          Date.prototype.truncateDate = function() { this.setHours(0); this.setMinutes(0); this.setSeconds(0); this.setMilliseconds(0); return this; };
           Date.prototype.addDays = function(days) { this.setDate(this.getDate() + days); return this; }
+          Date.prototype.addMilliseconds = function(ms) { this.setMilliseconds(this.getMilliseconds() + ms); return this; }
           Date.prototype.daysUntil = function(targetDate) { //returns integer number of days, as if the H:M:S didn't exist
             var days = Math.floor((targetDate.getTime() - this.getTime())/1000/60/60/24); //a guess
             var testDate = this.clone().addDays(days);
@@ -812,13 +816,11 @@
             }
             return(days);
           }
-          minDateTime.truncateDate();
-          maxDateTime.truncateDate();
           startDateTime = parseDate(getURLParameter(location.href, "startdatetime"));
-          if(!startDateTime || startDateTime < minDateTime || endDateTime > maxDateTime) {
+          if(!startDateTime || startDateTime < minDateTime || startDateTime > maxDateTime) {
             startDateTime = minDateTime.clone();
           }
-          endDateTime = parseDate(getURLParameter(location.href, "enddatetime")).clone().addDays(-1);
+          endDateTime = parseDate(getURLParameter(location.href, "enddatetime"));
           if(!endDateTime || endDateTime < minDateTime || endDateTime > maxDateTime) {
             endDateTime = maxDateTime.clone();
           }
@@ -849,15 +851,18 @@
                 ui.values[1] = ui.value;
               }
             }
-            if($("#start_datepicker").datepicker("getDate").getTime() != minDateTime.clone().addDays(ui.values[0]).getTime()) {
-              startDateTime = minDateTime.clone().addDays(ui.values[0]);
+            if($("#start_datepicker").datepicker("getDate").clone().truncateDate().getTime() != minDateTime.clone().addDays(ui.values[0]).truncateDate().getTime()) {
+              startDateTime = minDateTime.clone().addDays(ui.values[0])
+              startDateTime.truncateDate();
               mapOptionsToUrl();
               $("#start_datepicker").datepicker("setDate", startDateTime);
             }
-            if($("#end_datepicker").datepicker("getDate").getTime() != minDateTime.clone().addDays(ui.values[1]-1).getTime()) {
+            if($("#end_datepicker").datepicker("getDate").clone().truncateDate().getTime() != minDateTime.clone().addDays(ui.values[1]-1).truncateDate().getTime()) {
               endDateTime = minDateTime.clone().addDays(ui.values[1]-1);
+              endDateTime.truncateDate();
+              endDateTime.addDays(1);
               mapOptionsToUrl();
-              $("#end_datepicker").datepicker("setDate", endDateTime);
+              $("#end_datepicker").datepicker("setDate", endDateTime.clone().addMilliseconds(-1));
             }
             var sliderTimeout = null;
             if(!sliderTimeout) {
@@ -887,6 +892,8 @@
                                            onSelect: function(dateText, inst) {
                                              if($("#end_datepicker").datepicker("getDate").getTime() != minDateTime.clone().addDays($("#date_slider").slider('values', 1)-1).getTime()) {
                                                endDateTime = $("#end_datepicker").datepicker("getDate");
+                                               endDateTime.truncateDate();
+                                               endDateTime.addDays(1);
                                                mapOptionsToUrl();
                                                $("#date_slider").slider("values", 1, minDateTime.daysUntil($("#end_datepicker").datepicker("getDate"))+1);
                                              }
@@ -894,7 +901,7 @@
                                              load_photos();
                                            }
                                           });
-          $(div.getElementById("end_datepicker")).datepicker("setDate", endDateTime);
+          $(div.getElementById("end_datepicker")).datepicker("setDate", endDateTime.clone().addMilliseconds(-1));
           var passwordTimeout;
           $(div.getElementById("password_text")).on('input', function(e) {
             if(passwordTimeout) {
