@@ -493,7 +493,7 @@
                           fancyPhotos.push({href: imgSrc, title: hiddenPhoto[0] + "<br />" + hiddenPhoto[2], thumbnail: thumbSrc});
                         } else {
                           fancyPhotos.push({metadataReady: false, showReady: false,
-                                            title: hiddenPhoto[0] + "<br />" + hiddenPhoto[2], thumbnail: thumbSrc, isDom: true, aspectRatio: true, scrolling: "no",
+                                            title: hiddenPhoto[0] + "<br />" + hiddenPhoto[2], thumbnail: thumbSrc, type: "inline", aspectRatio: true, scrolling: "no",
                                             afterShow: function() {
                                               $(".fancybox-nav").addClass("fancybox-nav-video");
                                               this.element[0].showReady = true;
@@ -505,7 +505,7 @@
                                                 }
                                               }
                                             },
-                                            element: $('<video controls="controls"><source src="photos/' + hiddenPhoto[0] + '"></video>').on("loadedmetadata", function() {
+                                            href: $('<video controls="controls"><source src="photos/' + hiddenPhoto[0] + '"></video>').on("loadedmetadata", function() {
                                               this.metadataReady = true;
                                               if(this.showReady && this.metadataReady) {
                                                 if(this.width != this.videoWidth || this.height != this.videoHeight) {

@@ -286,10 +286,10 @@
 				type    = content ? 'html' : (opts.type  || obj.type);
 
 				if (!type && obj.isDom) {
-					type = obj.element.data('fancybox-type');
+					type = element.data('fancybox-type');
 
 					if (!type) {
-						rez  = obj.element.prop('class').match(/fancybox\.(\w+)/);
+						rez  = element.prop('class').match(/fancybox\.(\w+)/);
 						type = rez ? rez[1] : null;
 					}
 				}
