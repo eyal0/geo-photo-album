@@ -286,10 +286,10 @@
 				type    = content ? 'html' : (opts.type  || obj.type);
 
 				if (!type && obj.isDom) {
-					type = element.data('fancybox-type');
+					type = obj.element.data('fancybox-type');
 
 					if (!type) {
-						rez  = element.prop('class').match(/fancybox\.(\w+)/);
+						rez  = obj.element.prop('class').match(/fancybox\.(\w+)/);
 						type = rez ? rez[1] : null;
 					}
 				}
@@ -327,7 +327,7 @@
 							content = $( isString(href) ? href.replace(/.*(?=#[^\s]+$)/, '') : href ); //strip for ie7
 
 						} else if (obj.isDom) {
-							content = element;
+							content = obj.element;
 						}
 
 					} else if (type === 'html') {
@@ -335,7 +335,7 @@
 
 					} else if (!type && !href && obj.isDom) {
 						type    = 'inline';
-						content = element;
+						content = obj.element;
 					}
 				}
 
