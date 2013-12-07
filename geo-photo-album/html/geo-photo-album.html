@@ -714,12 +714,13 @@
         if(t == google.maps.MapTypeId.ROADMAP) { t = "m"; }
         if(t == google.maps.MapTypeId.SATELLITE) { t = "k"; }
         if(t == google.maps.MapTypeId.TERRAIN) { t = "p"; }
-        url += "?t=" + t;
-        url += "&z=" + map.getZoom();
-        url += "&ll=" + map.getCenter().lat() + "," + map.getCenter().lng();
-        url += "&startdatetime=" + startDateTime.getTime();
-        url += "&enddatetime=" + endDateTime.getTime();
-        $("#perm_link").attr("href", url).text(url);
+        var querystring = "?t=" + t;
+        querystring += "&z=" + map.getZoom();
+        querystring += "&ll=" + map.getCenter().lat() + "," + map.getCenter().lng();
+        querystring += "&startdatetime=" + startDateTime.getTime();
+        querystring += "&enddatetime=" + endDateTime.getTime();
+        $("#perm_link").attr("href", url + querystring);
+        history.replaceState(null, null, url + querystring);
       }
 
       function initialize() {
@@ -833,7 +834,7 @@
                           '<input type="button" value="Zoom" onClick="load_polyline(false,true);" />' + 
                           '<img src="images/play.png" onclick="playRoute();">' + 
                           '<label for="#password_text">Passwords:</label><input type="text" id="password_text" />' +
-                          '<label for="#perm_link">Permanent link:</label> <a href="" id="perm_link"></a>';
+                          '<a href="" id="perm_link"><img src="images/chain.png"></a>';
           div.id = "date_range";
           map.controls[google.maps.ControlPosition.BOTTOM_LEFT].push(div);
           $(div.getElementById("date_slider")).slider({animate: true, "step": 1, min: 0, max: days+1, values: [minDateTime.daysUntil(startDateTime), minDateTime.daysUntil(endDateTime)+1], range: true});
